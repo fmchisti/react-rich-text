@@ -432,6 +432,13 @@ export interface RichTextEditorProps {
   minHeight?: number | string;
   /** Additional className on the editable area */
   editorClassName?: string;
+
+  /**
+   * When provided, the image insert flow shows an "Upload" option.
+   * Callback receives the selected file; upload it (e.g. to your server/S3) and return the image URL.
+   * That URL is then used to insert the image.
+   */
+  onImageUpload?: (file: File) => Promise<string>;
 }
 
 // ---------------------------------------------------------------------------

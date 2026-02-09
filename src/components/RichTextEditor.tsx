@@ -34,6 +34,7 @@ import { Toolbar, DEFAULT_TOOLBAR_CONFIG } from './Toolbar/Toolbar';
 import { HoveringToolbar } from './HoveringToolbar';
 import { InputModal, type ModalAnchorPos } from './InputModal';
 import { LinkModal } from './LinkModal';
+import { ImageModal } from './ImageModal';
 import { TableInsertModal } from './TableInsertModal';
 import { ImageIcon, VideoIcon } from './Toolbar/icons';
 import { SlashMenu, type ContextMenuCommand } from './SlashMenu';
@@ -122,6 +123,7 @@ export function RichTextEditor({
   style,
   minHeight,
   editorClassName,
+  onImageUpload,
 }: RichTextEditorProps) {
   // Editor is created once and persisted. Plugins are intentionally omitted from deps
   // so the editor identity stays stable; plugins are only applied at mount.
@@ -623,17 +625,12 @@ export function RichTextEditor({
           onCancel={() => setShowLinkModal(false)}
         />
 
-        <InputModal
+        <ImageModal
           open={showImageModal}
-          title="Insert Image"
-          label="Image URL"
-          placeholder="https://example.com/photo.jpg"
-          helperText="Paste a direct link to an image (PNG, JPG, GIF, SVG, or WebP)"
-          submitText="Insert Image"
-          icon={<ImageIcon />}
           anchorPos={modalAnchor}
           onSubmit={handleImageSubmit}
           onCancel={() => setShowImageModal(false)}
+          onImageUpload={onImageUpload}
         />
 
         <InputModal
