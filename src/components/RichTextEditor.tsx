@@ -123,7 +123,8 @@ export function RichTextEditor({
   minHeight,
   editorClassName,
 }: RichTextEditorProps) {
-  // Create the editor instance once and persist it across renders
+  // Editor is created once and persisted. Plugins are intentionally omitted from deps
+  // so the editor identity stays stable; plugins are only applied at mount.
   const editor = useMemo(() => createRichTextEditor(plugins), []);
 
   // Track the current value for uncontrolled mode

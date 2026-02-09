@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSlate } from 'slate-react';
 import { ReactEditor } from 'slate-react';
@@ -8,17 +8,29 @@ import type { TableElement as TableElementType } from '../../core/types';
 
 const MIN_COL_WIDTH_PX = 24;
 
-export function Table({ attributes, children, element }: RenderElementProps) {
+function TableInner({ attributes, children, element }: RenderElementProps) {
   const editor = useSlate();
   const tableRef = useRef<HTMLTableElement>(null);
+  const slateRefRef = useRef<React.Ref<HTMLTableElement> | null>(null);
+  slateRefRef.current = (attributes as { ref?: React.Ref<HTMLTableElement> }).ref ?? null;
+
   const tableEl = element as TableElementType;
   const rows = tableEl.children ?? [];
-  const colCount =
-    (rows[0] as any)?.children?.length ?? 0;
-  const baseWidths: number[] =
-    (tableEl.colWidths?.length === colCount
-      ? tableEl.colWidths
-      : Array.from({ length: colCount }, () => 120)) ?? [];
+  const colCount = rows.length > 0 ? (rows[0] as any)?.children?.length ?? 0 : 0;
+  const baseWidths: number[] = useMemo(
+    () =>
+      colCount <= 0
+        ? []
+        : (tableEl.colWidths?.length === colCount
+            ? tableEl.colWidths
+            : Array.from({ length: colCount }, () => 120)) ?? [],
+    [tableEl.colWidths, colCount]
+  );
+
+  const tablePath = useMemo(
+    () => ReactEditor.findPath(editor, element),
+    [editor, element]
+  );
 
   const [resizeState, setResizeState] = useState<{
     colIndex: number;
@@ -35,7 +47,6 @@ export function Table({ attributes, children, element }: RenderElementProps) {
 
   const displayWidths: number[] = liveWidths ?? baseWidths;
   latestWidthsRef.current = displayWidths;
-  const tablePath = ReactEditor.findPath(editor, element);
 
   const handleResizeStart = useCallback(
     (colIndex: number, e: React.MouseEvent) => {
@@ -140,17 +151,22 @@ export function Table({ attributes, children, element }: RenderElementProps) {
         )
       : null;
 
-  const setTableRef = useCallback(
-    (el: HTMLTableElement | null) => {
-      (tableRef as React.MutableRefObject<HTMLTableElement | null>).current = el;
-      const attrRef = (attributes as { ref?: React.Ref<HTMLTableElement> }).ref;
-      if (typeof attrRef === 'function') attrRef(el);
-      else if (attrRef) (attrRef as React.MutableRefObject<HTMLTableElement | null>).current = el;
-    },
-    [attributes]
-  );
+  const setTableRef = useCallback((el: HTMLTableElement | null) => {
+    (tableRef as React.MutableRefObject<HTMLTableElement | null>).current = el;
+    const attrRef = slateRefRef.current;
+    if (typeof attrRef === 'function') attrRef(el);
+    else if (attrRef) (attrRef as React.MutableRefObject<HTMLTableElement | null>).current = el;
+  }, []);
 
   const { ref: _slateRef, ...tableAttributes } = attributes as { ref?: React.Ref<HTMLTableElement>; [k: string]: unknown };
+
+  if (colCount <= 0) {
+    return (
+      <table ref={setTableRef} className="rte-table" {...tableAttributes} style={{ tableLayout: 'fixed', width: '100%' }}>
+        <tbody>{children}</tbody>
+      </table>
+    );
+  }
 
   return (
     <>
@@ -190,3 +206,5 @@ export function Table({ attributes, children, element }: RenderElementProps) {
     </>
   );
 }
+
+export const Table = React.memo(TableInner);

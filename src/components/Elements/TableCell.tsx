@@ -2,7 +2,7 @@ import React from 'react';
 import type { RenderElementProps } from 'slate-react';
 import type { TableCellElement } from '../../core/types';
 
-export function TableCell({ attributes, children, element }: RenderElementProps) {
+function TableCellInner({ attributes, children, element }: RenderElementProps) {
   const el = element as TableCellElement;
   const Tag = el.header ? 'th' : 'td';
   return (
@@ -11,3 +11,5 @@ export function TableCell({ attributes, children, element }: RenderElementProps)
     </Tag>
   );
 }
+
+export const TableCell = React.memo(TableCellInner);
