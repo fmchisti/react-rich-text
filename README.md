@@ -302,6 +302,13 @@ The package exports the main component, hooks, serializers, types, and Slate uti
 - **Utils:** `createRichTextEditor`, `getBlockAlign`, `setBlockAlign`, `Transforms` (re-export from Slate)
 - **Types:** `Descendant`, `RichTextEditorProps`, `EditorPlugin`, `CustomElement`, `ImageElement`, `ImageAlign`, `ToolbarConfig`, `SlashMenuConfig`, `CustomContextMenuCommand`, etc.
 
+## Author
+
+**Fahim Mahmud Chisti**
+
+- GitHub: [@fmchisti](https://github.com/fmchisti)
+- Website: [fahimcode.com](https://fahimcode.com/)
+
 ## License
 
 MIT

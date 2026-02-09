@@ -68,9 +68,14 @@
     "open-source"
   ],
   "license": "MIT",
+  "author": "Fahim Mahmud Chisti (https://fahimcode.com/)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/react-rich-text"
+    "url": "https://github.com/fmchisti/react-rich-text"
+  },
+  "homepage": "https://github.com/fmchisti/react-rich-text#readme",
+  "bugs": {
+    "url": "https://github.com/fmchisti/react-rich-text/issues"
   },
   "sideEffects": [
     "**/*.css"
