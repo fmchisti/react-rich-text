@@ -70,7 +70,7 @@ export function ImageElement({ attributes, children, element }: RenderElementPro
       if (path == null) return;
       startXRef.current = e.clientX;
       const currentWidth = el.width ?? undefined;
-      startWidthRef.current = currentWidth ?? (e.currentTarget.closest('.rte-image-wrapper')?.querySelector('img')?.getBoundingClientRect().width ?? 400);
+      startWidthRef.current = currentWidth ?? (e.currentTarget.closest('.rte-image-inner')?.querySelector('img')?.getBoundingClientRect().width ?? 400);
       currentWidthRef.current = startWidthRef.current;
       setIsResizing(true);
       setDragWidth(startWidthRef.current);
@@ -129,22 +129,25 @@ export function ImageElement({ attributes, children, element }: RenderElementPro
     <div {...attributes}>
       <div contentEditable={false}>
         <div className={`rte-image-wrapper ${alignmentClass}${isHighlighted ? ' rte-image--selected' : ''}${isResizing ? ' rte-image--resizing' : ''}`}>
-          <img
-            src={el.url}
-            alt={el.alt || ''}
-            className="rte-image"
-            draggable={false}
-            style={imgStyle}
-          />
-          {isHighlighted && !isResizing && (
-            <>
+          <div className="rte-image-inner">
+            <img
+              src={el.url}
+              alt={el.alt || ''}
+              className="rte-image"
+              draggable={false}
+              style={imgStyle}
+            />
+            {isHighlighted && !isResizing && (
               <div
                 className="rte-image-resize-handle"
                 onMouseDown={handleResizeStart}
                 title="Drag to resize"
                 aria-label="Resize image"
               />
-              <div className="rte-image-align-bar" role="toolbar" aria-label="Image alignment">
+            )}
+          </div>
+          {isHighlighted && !isResizing && (
+            <div className="rte-image-align-bar" role="toolbar" aria-label="Image alignment">
                 {ALIGN_OPTIONS.map(({ value, title, icon }) => (
                   <button
                     key={value}
@@ -160,8 +163,7 @@ export function ImageElement({ attributes, children, element }: RenderElementPro
                     {icon}
                   </button>
                 ))}
-              </div>
-            </>
+            </div>
           )}
         </div>
       </div>
