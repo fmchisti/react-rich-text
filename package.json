@@ -32,7 +32,8 @@
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
     "playground": "pnpm --filter playground dev",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
