@@ -1,4 +1,4 @@
-import type { BlockType } from '../../core/types';
+import type { BlockType, CustomContextMenuCommand } from '../../core/types';
 
 // ---------------------------------------------------------------------------
 // Command types
@@ -17,7 +17,8 @@ export type SlashCommandAction =
   | { type: 'block'; block: BlockType; level?: number }
   | { type: 'modal'; modal: 'link' | 'image' | 'video' }
   | { type: 'variable' }
-  | { type: 'table'; tableAction: TableActionType };
+  | { type: 'table'; tableAction: TableActionType }
+  | { type: 'custom'; customId: string };
 
 export interface SlashCommand {
   /** Unique id */
@@ -27,7 +28,7 @@ export interface SlashCommand {
   /** Short description */
   description: string;
   /** Category for grouping */
-  category: 'text' | 'list' | 'media' | 'insert';
+  category: 'text' | 'list' | 'media' | 'insert' | 'custom';
   /** Keywords for search filtering */
   keywords: string[];
   /** SVG icon path(s) — rendered inside a 24x24 viewBox */
@@ -35,6 +36,9 @@ export interface SlashCommand {
   /** What happens when selected */
   action: SlashCommandAction;
 }
+
+// Re-export for convenience
+export type { CustomContextMenuCommand } from '../../core/types';
 
 // ---------------------------------------------------------------------------
 // All commands
@@ -186,7 +190,38 @@ export const CATEGORY_LABELS: Record<string, string> = {
   list: 'Lists',
   media: 'Media',
   insert: 'Insert',
+  custom: 'Custom',
 };
+
+/** Default icon for custom commands (small circle) */
+const DEFAULT_CUSTOM_ICON = '<circle cx="12" cy="12" r="3"/>';
+
+/**
+ * Normalize and filter custom commands by search.
+ */
+export function filterCustomCommands(
+  commands: CustomContextMenuCommand[] | undefined,
+  search: string
+): SlashCommand[] {
+  if (!commands?.length) return [];
+  const lower = search.toLowerCase();
+  return commands
+    .filter(
+      (c) =>
+        !lower ||
+        c.label.toLowerCase().includes(lower) ||
+        (c.keywords ?? []).some((k) => k.toLowerCase().includes(lower))
+    )
+    .map((c) => ({
+      id: c.id,
+      label: c.label,
+      description: c.description ?? '',
+      category: (c.category ?? 'custom') as SlashCommand['category'],
+      keywords: c.keywords ?? [],
+      iconPaths: c.iconPaths ?? DEFAULT_CUSTOM_ICON,
+      action: c.action,
+    }));
+}
 
 // ---------------------------------------------------------------------------
 // Table context commands (shown when cursor is inside a table)

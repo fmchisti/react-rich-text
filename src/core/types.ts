@@ -344,12 +344,31 @@ export interface HoveringToolbarConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Custom context menu command (user-defined items in right-click menu)
+// ---------------------------------------------------------------------------
+
+export interface CustomContextMenuCommand {
+  id: string;
+  label: string;
+  description?: string;
+  category?: string;
+  keywords?: string[];
+  /** SVG path(s) for 24x24 viewBox icon */
+  iconPaths?: string;
+  action: { type: 'custom'; customId: string };
+}
+
+// ---------------------------------------------------------------------------
 // Slash Menu Config
 // ---------------------------------------------------------------------------
 
 export interface SlashMenuConfig {
   /** Enable right-click context menu. Default: true */
   enabled?: boolean;
+  /** Custom commands shown in the context menu (e.g. insert custom block) */
+  customCommands?: CustomContextMenuCommand[];
+  /** Called when a custom command is selected. Use to insert content or run logic. */
+  onContextMenuCommand?: (customId: string, editor: RichTextEditor) => void;
 }
 
 // ---------------------------------------------------------------------------

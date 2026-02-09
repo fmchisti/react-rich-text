@@ -86,8 +86,12 @@ import '@richtext/react-rich-text/styles.css';
 
 ### Custom Plugins
 
+The editor receives a `plugins` prop: an array of functions that extend the Slate editor. Each plugin receives the editor and returns it (optionally after overriding methods). See **[docs/PLUGINS.md](docs/PLUGINS.md)** for the full contributor guide.
+
 ```tsx
-const withMyFeature = (editor) => {
+import type { EditorPlugin } from '@richtext/react-rich-text';
+
+const withMyFeature: EditorPlugin = (editor) => {
   const { insertText } = editor;
   editor.insertText = (text) => {
     // custom logic here

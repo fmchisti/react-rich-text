@@ -27,6 +27,7 @@ export type {
   HoveringToolbarConfig,
   HoveringToolbarItemId,
   SlashMenuConfig,
+  CustomContextMenuCommand,
   RichTextEditor as RichTextEditorType,
   EditorPlugin,
   ToolbarConfig,

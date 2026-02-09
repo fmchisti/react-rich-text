@@ -288,6 +288,12 @@ export function RichTextEditor({
       setCtxMenuSearch('');
 
       const { action } = cmd;
+      if (action.type === 'custom') {
+        if (slashConfig && typeof slashConfig === 'object' && slashConfig.onContextMenuCommand) {
+          slashConfig.onContextMenuCommand(action.customId, editor);
+        }
+        return;
+      }
       if (action.type === 'table') {
         switch (action.tableAction) {
           case 'insert-row-above':
@@ -340,7 +346,7 @@ export function RichTextEditor({
           break;
       }
     },
-    [editor, handleImageClick, handleVideoClick, handleLinkClick, ctxMenuAnchor]
+    [editor, handleImageClick, handleVideoClick, handleLinkClick, ctxMenuAnchor, slashConfig]
   );
 
   // ---- Element renderer ----
@@ -600,6 +606,7 @@ export function RichTextEditor({
               search={ctxMenuSearch}
               anchorPos={ctxMenuAnchor}
               inTable={ctxMenuInTable}
+              customCommands={typeof slashConfig === 'object' ? slashConfig.customCommands : undefined}
               variables={variables}
               onSelect={handleCtxMenuSelect}
               onClose={() => { setCtxMenuOpen(false); setCtxMenuSearch(''); }}

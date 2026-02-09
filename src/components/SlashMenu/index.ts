@@ -2,9 +2,11 @@ export { SlashMenu, type SlashMenuProps, type ContextMenuCommand } from './Slash
 export {
   SLASH_COMMANDS,
   filterCommands,
+  filterCustomCommands,
   TABLE_CONTEXT_COMMANDS,
   type SlashCommand,
   type SlashCommandAction,
   type TableActionType,
   type TableContextCommand,
+  type CustomContextMenuCommand,
 } from './slashCommands';

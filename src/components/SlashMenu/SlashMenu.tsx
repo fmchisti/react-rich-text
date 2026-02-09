@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   SLASH_COMMANDS,
   filterCommands,
+  filterCustomCommands,
   CATEGORY_LABELS,
   TABLE_CONTEXT_COMMANDS,
   type SlashCommand,
   type TableContextCommand,
+  type CustomContextMenuCommand,
 } from './slashCommands';
 
 export type ContextMenuCommand = SlashCommand | TableContextCommand;
@@ -23,6 +25,8 @@ export interface SlashMenuProps {
   anchorPos: { top: number; left: number };
   /** Whether the cursor is inside a table (shows table actions at top) */
   inTable?: boolean;
+  /** Custom context menu commands (user-defined) */
+  customCommands?: CustomContextMenuCommand[];
   /** Available variable names */
   variables?: string[];
   /** Called when a command is selected */
@@ -40,6 +44,7 @@ export function SlashMenu({
   search,
   anchorPos,
   inTable = false,
+  customCommands,
   variables,
   onSelect,
   onClose,
@@ -49,9 +54,17 @@ export function SlashMenu({
   const [showVarSub, setShowVarSub] = useState(false);
 
   const filtered = useMemo(() => filterCommands(search), [search]);
+  const customFiltered = useMemo(
+    () => filterCustomCommands(customCommands, search),
+    [customCommands, search]
+  );
+  const allFiltered = useMemo<SlashCommand[]>(
+    () => [...filtered, ...customFiltered],
+    [filtered, customFiltered]
+  );
   const flatList = useMemo<ContextMenuCommand[]>(
-    () => (inTable ? [...TABLE_CONTEXT_COMMANDS, ...filtered] : filtered),
-    [inTable, filtered]
+    () => (inTable ? [...TABLE_CONTEXT_COMMANDS, ...allFiltered] : allFiltered),
+    [inTable, allFiltered]
   );
 
   // Reset active index when list changes
@@ -172,9 +185,9 @@ export function SlashMenu({
 
   if (!open || flatList.length === 0) return null;
 
-  // Group filtered (slash) commands by category (table commands are not in filtered when inTable)
+  // Group built-in + custom commands by category (table commands rendered separately when inTable)
   const grouped = new Map<string, SlashCommand[]>();
-  for (const cmd of filtered) {
+  for (const cmd of allFiltered) {
     const list = grouped.get(cmd.category) ?? [];
     list.push(cmd);
     grouped.set(cmd.category, list);
