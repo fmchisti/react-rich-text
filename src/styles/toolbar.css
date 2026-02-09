@@ -1,0 +1,143 @@
+/* ============================================================
+   Toolbar Styles
+   ============================================================ */
+
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--rte-toolbar-bg);
+  border-bottom: 1px solid var(--rte-toolbar-border-color);
+  user-select: none;
+}
+
+/* ---- Toolbar Group ---- */
+
+.rte-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ---- Toolbar Divider ---- */
+
+.rte-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--rte-toolbar-border-color);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ---- Toolbar Button ---- */
+
+.rte-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rte-text-color);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.rte-toolbar-button:hover {
+  background: var(--rte-button-hover-bg);
+}
+
+.rte-toolbar-button.rte-toolbar-button--active {
+  background: var(--rte-button-active-bg);
+  color: var(--rte-button-active-color);
+}
+
+.rte-toolbar-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rte-toolbar-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Toolbar Select ---- */
+
+.rte-toolbar-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--rte-toolbar-border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rte-text-color);
+  font-size: 0.85em;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  padding-right: 24px;
+}
+
+.rte-toolbar-select:hover {
+  background-color: var(--rte-button-hover-bg);
+}
+
+.rte-toolbar-select:focus {
+  border-color: var(--rte-focus-ring-color);
+}
+
+/* ---- Link Popup ---- */
+
+.rte-link-popup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rte-link-popup input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--rte-toolbar-border-color);
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-family: inherit;
+  outline: none;
+  min-width: 180px;
+}
+
+.rte-link-popup input:focus {
+  border-color: var(--rte-focus-ring-color);
+}
+
+.rte-link-popup button {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 4px;
+  background: var(--rte-focus-ring-color);
+  color: white;
+  font-size: 0.8em;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rte-link-popup button:hover {
+  opacity: 0.9;
+}

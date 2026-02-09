@@ -1,0 +1,309 @@
+/* ============================================================
+   Hovering Toolbar Styles
+   ============================================================ */
+
+.rte-hovering-toolbar {
+  position: absolute;
+  z-index: 9999;
+  top: -9999px;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---- Single-line layout: outer wrapper with scroll arrows ---- */
+
+.rte-hovering-toolbar--single-line .rte-hovering-toolbar-outer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  background: var(--rte-hovering-toolbar-bg, #1e293b);
+  color: var(--rte-hovering-toolbar-color, #f1f5f9);
+  border-radius: 8px;
+  box-shadow: var(--rte-hovering-toolbar-shadow, 0 4px 14px rgba(0, 0, 0, 0.25));
+  overflow: visible;
+}
+
+/* Scrollable area: one line, scroll with arrow or touch */
+.rte-hovering-toolbar--single-line .rte-hovering-toolbar-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 280px;
+  min-width: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.rte-hovering-toolbar--single-line .rte-hovering-scroll-btn--left {
+  border-radius: 8px 0 0 8px;
+}
+
+.rte-hovering-toolbar--single-line .rte-hovering-scroll-btn--right {
+  border-radius: 0 8px 8px 0;
+}
+
+.rte-hovering-toolbar--single-line .rte-hovering-toolbar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Button row: single line, no wrap */
+.rte-hovering-toolbar--single-line .rte-hovering-toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  flex-wrap: nowrap;
+  width: max-content;
+}
+
+/* Scroll arrow buttons */
+.rte-hovering-scroll-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rte-hovering-toolbar-color, #f1f5f9);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s ease;
+}
+
+.rte-hovering-scroll-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.rte-hovering-scroll-btn:disabled,
+.rte-hovering-scroll-btn[aria-hidden="true"] {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* Arrow / pointer (centered below the toolbar) */
+.rte-hovering-toolbar--single-line .rte-hovering-toolbar-outer::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--rte-hovering-toolbar-bg, #1e293b);
+  pointer-events: none;
+}
+
+/* ---- Button row (shared) ---- */
+
+.rte-hovering-toolbar-buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--rte-hovering-toolbar-bg, #1e293b);
+  color: var(--rte-hovering-toolbar-color, #f1f5f9);
+  border-radius: 8px;
+  box-shadow: var(--rte-hovering-toolbar-shadow, 0 4px 14px rgba(0, 0, 0, 0.25));
+}
+
+/* When inside scroll (single-line), background is on parent */
+.rte-hovering-toolbar--single-line .rte-hovering-toolbar-buttons {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* ---- Hovering button ---- */
+
+.rte-hovering-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  flex-shrink: 0;
+}
+
+.rte-hovering-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.rte-hovering-btn--active {
+  background: rgba(255, 255, 255, 0.25);
+  color: #60a5fa;
+}
+
+.rte-hovering-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Divider between groups ---- */
+
+.rte-hovering-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+/* ---- Select dropdowns (heading, font size, variable) ---- */
+
+.rte-hovering-select {
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--rte-hovering-toolbar-color, #f1f5f9);
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  padding-right: 14px;
+  flex-shrink: 0;
+}
+
+.rte-hovering-select:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.rte-hovering-select:focus {
+  border-color: #60a5fa;
+}
+
+.rte-hovering-select option {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.rte-hovering-select--narrow {
+  width: 42px;
+  padding-right: 14px;
+  text-align: center;
+}
+
+/* ---- Link input ---- */
+
+.rte-hovering-link-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--rte-hovering-toolbar-bg, #1e293b);
+  border-radius: 8px;
+  box-shadow: var(--rte-hovering-toolbar-shadow, 0 4px 14px rgba(0, 0, 0, 0.25));
+}
+
+.rte-hovering-link-input input {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--rte-hovering-toolbar-color, #f1f5f9);
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+  min-width: 180px;
+}
+
+.rte-hovering-link-input input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.rte-hovering-link-input input:focus {
+  border-color: #60a5fa;
+}
+
+.rte-hovering-link-input button {
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 4px;
+  background: #3b82f6;
+  color: white;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rte-hovering-link-input button:hover {
+  background: #2563eb;
+}
+
+/* ---- Color picker grid ---- */
+
+.rte-hovering-color-picker {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+  padding: 8px;
+  background: var(--rte-hovering-toolbar-bg, #1e293b);
+  border-radius: 8px;
+  box-shadow: var(--rte-hovering-toolbar-shadow, 0 4px 14px rgba(0, 0, 0, 0.25));
+  max-width: 240px;
+}
+
+.rte-hovering-color-swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.rte-hovering-color-swatch:hover {
+  transform: scale(1.25);
+  z-index: 1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+.rte-hovering-color-swatch--selected {
+  box-shadow: 0 0 0 2px #60a5fa;
+  transform: scale(1.15);
+}
+
+.rte-hovering-color-swatch--remove {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+}
+
+.rte-hovering-color-swatch--remove:hover {
+  background: rgba(239, 68, 68, 0.2);
+}

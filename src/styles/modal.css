@@ -1,0 +1,205 @@
+/* ============================================================
+   Input Modal Styles — clean, native-looking dialog
+   ============================================================ */
+
+/* ---- Overlay ---- */
+
+.rte-modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: transparent;
+  animation: rte-modal-fade-in 0.1s ease;
+  border-radius: inherit;
+}
+
+@keyframes rte-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Modal Panel ---- */
+
+.rte-modal {
+  position: absolute;
+  width: 340px;
+  background: var(--rte-bg-color, #ffffff);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  animation: rte-modal-slide-down 0.15s ease;
+  font-family: var(--rte-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  z-index: 101;
+}
+
+@keyframes rte-modal-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Header ---- */
+
+.rte-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 4px;
+}
+
+.rte-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--rte-button-active-bg, #dbeafe);
+  color: var(--rte-button-active-color, #2563eb);
+  flex-shrink: 0;
+}
+
+.rte-modal-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rte-modal-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--rte-text-color, #1a1a2e);
+  line-height: 1.3;
+}
+
+/* ---- Body ---- */
+
+.rte-modal-body {
+  padding: 10px 16px 6px;
+}
+
+.rte-modal-field {
+  margin-bottom: 12px;
+}
+
+.rte-modal-field:last-of-type {
+  margin-bottom: 0;
+}
+
+.rte-modal-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--rte-text-color, #374151);
+}
+
+.rte-modal-input {
+  display: block;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--rte-border-color, #d1d5db);
+  border-radius: 8px;
+  background: var(--rte-bg-color, #ffffff);
+  color: var(--rte-text-color, #1a1a2e);
+  font-size: 0.84rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.rte-modal-input::placeholder {
+  color: var(--rte-placeholder-color, #9ca3af);
+}
+
+.rte-modal-input:focus {
+  border-color: var(--rte-focus-ring-color, #3b82f6);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--rte-focus-ring-color, #3b82f6) 15%, transparent);
+}
+
+.rte-modal-input--error {
+  border-color: #ef4444;
+}
+
+.rte-modal-input--error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.rte-modal-select {
+  cursor: pointer;
+  appearance: auto;
+}
+
+.rte-modal-helper {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.rte-modal-error {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: #ef4444;
+  line-height: 1.4;
+}
+
+/* ---- Footer ---- */
+
+.rte-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 10px 16px 14px;
+}
+
+.rte-modal-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease, opacity 0.12s ease;
+  line-height: 32px;
+}
+
+.rte-modal-btn--cancel {
+  background: transparent;
+  color: var(--rte-text-color, #374151);
+  border: 1px solid var(--rte-border-color, #d1d5db);
+}
+
+.rte-modal-btn--cancel:hover {
+  background: var(--rte-button-hover-bg, #f3f4f6);
+}
+
+.rte-modal-btn--submit {
+  background: var(--rte-focus-ring-color, #3b82f6);
+  color: #ffffff;
+}
+
+.rte-modal-btn--submit:hover {
+  opacity: 0.9;
+}
+
+.rte-modal-btn--submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
