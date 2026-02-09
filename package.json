@@ -1,5 +1,5 @@
 {
-  "name": "@richtext/react-rich-text",
+  "name": "@fahimcode/react-rich-text",
   "version": "0.1.0",
   "description": "An advanced, open-source, 100% customizable rich text editor for React with full TypeScript support",
   "type": "module",
@@ -40,14 +40,14 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
+    "is-hotkey": "^0.2.0",
     "slate": "^0.110.2",
     "slate-history": "^0.110.3",
-    "slate-react": "^0.110.3",
-    "is-hotkey": "^0.2.0"
+    "slate-react": "^0.110.3"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.1.0",
     "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
     "@types/is-hotkey": "^0.1.10",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
