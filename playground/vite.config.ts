@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       // Point imports from the library to the source for HMR
-      '@richtext/react-rich-text': path.resolve(__dirname, '../src/index.ts'),
+      'fc-react-rich-editor': path.resolve(__dirname, '../src/index.ts'),
     },
   },
 });

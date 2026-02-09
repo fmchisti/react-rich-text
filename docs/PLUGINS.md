@@ -9,7 +9,7 @@ The editor **accepts custom plugins** via the `plugins` prop. Plugins are applie
 ### With `<RichTextEditor>`
 
 ```tsx
-import { RichTextEditor, type EditorPlugin } from '@richtext/react-rich-text';
+import { RichTextEditor, type EditorPlugin } from 'fc-react-rich-editor';
 
 const withMyPlugin: EditorPlugin = (editor) => {
   // extend or override editor methods
@@ -26,7 +26,7 @@ const withMyPlugin: EditorPlugin = (editor) => {
 ### With headless `useRichTextEditor`
 
 ```tsx
-import { useRichTextEditor, type EditorPlugin } from '@richtext/react-rich-text';
+import { useRichTextEditor, type EditorPlugin } from 'fc-react-rich-editor';
 
 const { editor, ...rest } = useRichTextEditor({
   plugins: [withMyPlugin],
@@ -42,7 +42,7 @@ const { editor, ...rest } = useRichTextEditor({
 From the package types:
 
 ```ts
-import type { RichTextEditor } from '@richtext/react-rich-text';
+import type { RichTextEditor } from 'fc-react-rich-editor';
 
 export type EditorPlugin = (editor: RichTextEditor) => RichTextEditor;
 ```
@@ -70,7 +70,7 @@ So your plugin receives the fully wired editor and can override any method or ad
 Override or wrap an editor method, then return the editor:
 
 ```ts
-import type { EditorPlugin } from '@richtext/react-rich-text';
+import type { EditorPlugin } from 'fc-react-rich-editor';
 
 const withNoOp: EditorPlugin = (editor) => {
   return editor;
@@ -84,7 +84,7 @@ const withNoOp: EditorPlugin = (editor) => {
 A common pattern is to wrap an existing method and call it when appropriate:
 
 ```ts
-import type { EditorPlugin } from '@richtext/react-rich-text';
+import type { EditorPlugin } from 'fc-react-rich-editor';
 
 const withCustomInsertText: EditorPlugin = (editor) => {
   const { insertText } = editor;
@@ -173,7 +173,7 @@ Tables and other features are implemented via transforms and components; they do
 | Does the editor accept plugins? | **Yes**, via the `plugins` prop on `RichTextEditor` and the `plugins` option of `useRichTextEditor`. |
 | When are they applied? | At editor creation (mount). The same editor instance is reused; changing `plugins` later does not re-apply them. |
 | What’s the signature? | `(editor: RichTextEditor) => RichTextEditor`. |
-| Where do I get the type? | `import type { EditorPlugin } from '@richtext/react-rich-text'`. |
+| Where do I get the type? | `import type { EditorPlugin } from 'fc-react-rich-editor'`. |
 
 For real examples, see `src/core/plugins/` (e.g. `withShortcuts.ts`, `withInlines.ts`).
 
@@ -196,7 +196,7 @@ import {
   RichTextEditor,
   type CustomContextMenuCommand,
   type SlashMenuConfig,
-} from '@richtext/react-rich-text';
+} from 'fc-react-rich-editor';
 
 const customCommands: CustomContextMenuCommand[] = [
   {

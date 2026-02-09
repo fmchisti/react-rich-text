@@ -34,15 +34,7 @@ npm whoami
 
 ## 3. Package name and scope
 
-This package is named **`@richtext/react-rich-text`** (scoped under `@richtext`).
-
-- If you **own the `@richtext` org** on npm, you can publish as-is.
-- If you **don’t**, either:
-  - Create the [@richtext organization](https://www.npmjs.com/org/create) on npm and publish under it, or
-  - Change the name in `package.json` to your own scope, e.g. `@fmchisti/react-rich-text`:
-  ```bash
-  npm pkg set name=@fmchisti/react-rich-text
-  ```
+This package is named **`fc-react-rich-editor`** (unscoped). No npm organization is required.
 
 ## 4. Build and publish
 
@@ -74,7 +66,7 @@ npm publish --access public
 
 ## 5. After publishing
 
-- Package page: `https://www.npmjs.com/package/@richtext/react-rich-text` (or your scope/name).
-- Install: `npm install @richtext/react-rich-text`
+- Package page: `https://www.npmjs.com/package/fc-react-rich-editor`
+- Install: `npm install fc-react-rich-editor`
 
 To publish updates, bump the version (e.g. `npm version patch`) then run `npm publish --access public` again.

@@ -1,5 +1,5 @@
 {
-  "name": "react-rich-text",
+  "name": "fc-react-rich-editor",
   "version": "0.1.0",
   "description": "An advanced, open-source, 100% customizable rich text editor for React with full TypeScript support",
   "type": "module",

@@ -7,7 +7,7 @@ import {
   type Descendant,
   type CustomContextMenuCommand,
   type SlashMenuConfig,
-} from "@richtext/react-rich-text";
+} from "fc-react-rich-editor";
 // Styles are included by RichTextEditor. Package users do not need to import CSS.
 
 const customCommands: CustomContextMenuCommand[] = [
@@ -137,7 +137,7 @@ const INITIAL_VALUE: Descendant[] = [
     language: "typescript",
     children: [
       {
-        text: 'import { RichTextEditor } from "@richtext/react-rich-text";\n\nfunction App() {\n  return <RichTextEditor placeholder="Start writing..." />;\n}',
+        text: 'import { RichTextEditor } from "fc-react-rich-editor";\n\nfunction App() {\n  return <RichTextEditor placeholder="Start writing..." />;\n}',
       },
     ],
   },

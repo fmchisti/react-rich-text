@@ -52,7 +52,7 @@ interface UseRichTextEditorReturn {
  *
  * @example
  * ```tsx
- * import { useRichTextEditor } from '@richtext/react-rich-text';
+ * import { useRichTextEditor } from 'fc-react-rich-editor';
  * import { Slate, Editable } from 'slate-react';
  *
  * function MyEditor() {

@@ -1,4 +1,4 @@
-# @richtext/react-rich-text
+# fc-react-rich-editor
 
 A full-featured, customizable rich text editor for React with TypeScript support. Built on [Slate.js](https://docs.slatejs.org/).
 
@@ -20,7 +20,7 @@ A full-featured, customizable rich text editor for React with TypeScript support
 ## Installation
 
 ```bash
-npm install @richtext/react-rich-text
+npm install fc-react-rich-editor
 ```
 
 **Peer dependencies:** React 18+ and React DOM.
@@ -29,7 +29,7 @@ npm install @richtext/react-rich-text
 
 ```tsx
 import { useState } from 'react';
-import { RichTextEditor } from '@richtext/react-rich-text';
+import { RichTextEditor } from 'fc-react-rich-editor';
 
 function App() {
   const [value, setValue] = useState([
@@ -49,7 +49,7 @@ function App() {
 Styles are included with the component. For headless usage or custom CSS entry, import explicitly:
 
 ```tsx
-import '@richtext/react-rich-text/styles.css';
+import 'fc-react-rich-editor/styles.css';
 ```
 
 ## Usage
@@ -125,7 +125,7 @@ import {
   RichTextEditor,
   type CustomContextMenuCommand,
   type SlashMenuConfig,
-} from '@richtext/react-rich-text';
+} from 'fc-react-rich-editor';
 
 const customCommands: CustomContextMenuCommand[] = [
   {
@@ -161,7 +161,7 @@ const slashConfig: SlashMenuConfig = {
 
 ### Toolbar and hovering toolbar
 
-- **Toolbar** – `toolbar={true}` (default), `toolbar={false}`, or a [ToolbarConfig](https://github.com/user/react-rich-text) object with `groups` and `items` (marks, heading select, link, image, video, variable, table, alignment, etc.).
+- **Toolbar** – `toolbar={true}` (default), `toolbar={false}`, or a [ToolbarConfig](https://github.com/fmchisti/react-rich-text) object with `groups` and `items` (marks, heading select, link, image, video, variable, table, alignment, etc.).
 - **Hovering toolbar** – Shown when text is selected. Use `hoveringToolbar={true}` (default), `hoveringToolbar={false}`, or an object to toggle items (bold, italic, link, font color, alignment, etc.) and set `order`.
 
 ### Theming
@@ -188,7 +188,7 @@ Override theme tokens via the `theme` prop:
 import {
   htmlSerializer,
   markdownSerializer,
-} from '@richtext/react-rich-text';
+} from 'fc-react-rich-editor';
 
 // Slate value → HTML
 const html = htmlSerializer.serialize(value);
@@ -219,7 +219,7 @@ Build your own UI around the same editor logic:
 
 ```tsx
 import { Slate } from 'slate-react';
-import { useRichTextEditor } from '@richtext/react-rich-text';
+import { useRichTextEditor } from 'fc-react-rich-editor';
 
 function MyEditor() {
   const { editor, value, onChange, renderElement, renderLeaf } = useRichTextEditor();
@@ -262,7 +262,7 @@ Override how elements or leaves are rendered; return `undefined` to fall back to
 Pass an array of **editor plugins** to extend Slate behavior (e.g. custom `insertData`, `isVoid`, or new helpers):
 
 ```tsx
-import type { EditorPlugin } from '@richtext/react-rich-text';
+import type { EditorPlugin } from 'fc-react-rich-editor';
 
 const withMyFeature: EditorPlugin = (editor) => {
   const { insertText } = editor;

@@ -1,6 +1,6 @@
 # Adding More Features
 
-This guide shows how to extend **@richtext/react-rich-text** with custom behavior and UI without forking the package.
+This guide shows how to extend **fc-react-rich-editor** with custom behavior and UI without forking the package.
 
 ---
 
@@ -14,8 +14,8 @@ This guide shows how to extend **@richtext/react-rich-text** with custom behavio
 **Example:** Insert a callout block when the user chooses “Callout” from the right-click menu.
 
 ```tsx
-import { Transforms } from '@richtext/react-rich-text';
-import type { CustomContextMenuCommand, SlashMenuConfig } from '@richtext/react-rich-text';
+import { Transforms } from 'fc-react-rich-editor';
+import type { CustomContextMenuCommand, SlashMenuConfig } from 'fc-react-rich-editor';
 
 const customCommands: CustomContextMenuCommand[] = [
   {
@@ -54,13 +54,13 @@ Custom commands are merged with built-in ones and are searchable in the context 
 To change **editor behavior** (e.g. paste handling, void elements, normalization), write an **editor plugin** and pass it via the `plugins` prop.
 
 - **Signature:** `(editor: RichTextEditor) => RichTextEditor`
-- **Type:** `import type { EditorPlugin } from '@richtext/react-rich-text'`
+- **Type:** `import type { EditorPlugin } from 'fc-react-rich-editor'`
 - Plugins run **after** all built-in plugins. You can override `insertData`, `isVoid`, `isInline`, `insertText`, etc.
 
 **Example:** Replace “…” with “...” on insert.
 
 ```tsx
-import type { EditorPlugin } from '@richtext/react-rich-text';
+import type { EditorPlugin } from 'fc-react-rich-editor';
 
 const withEllipsis: EditorPlugin = (editor) => {
   const { insertText } = editor;
