@@ -102,7 +102,7 @@
   "author": "Fahim Mahmud Chisti (https://fahimcode.com/)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fmchisti/react-rich-text"
+    "url": "git+https://github.com/fmchisti/react-rich-text.git"
   },
   "homepage": "https://github.com/fmchisti/react-rich-text#readme",
   "bugs": {

@@ -1,6 +1,24 @@
 # Publishing to npm
 
-## 1. Log in to npm
+## 1. Two-factor authentication (required)
+
+npm requires **2FA** or a **granular access token with “bypass 2FA”** to publish packages. If you see:
+
+```text
+403 Forbidden - Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages.
+```
+
+**Option A – Enable 2FA on your account (recommended)**  
+1. Go to [npmjs.com](https://www.npmjs.com) → Account → **Enable 2FA**.  
+2. Use an authenticator app (e.g. Google Authenticator).  
+3. Run `npm publish --access public` again; npm will prompt for the one-time code.
+
+**Option B – Use an automation token (e.g. for CI)**  
+1. npm → Account → **Access Tokens** → **Generate New Token**.  
+2. Choose **Granular Access Token**, set package permissions to **Read and write**, and enable **Bypass 2FA for publish**.  
+3. Use that token: `npm login` with token as password, or set `NPM_TOKEN` in CI.
+
+## 2. Log in to npm
 
 If you haven’t already:
 
@@ -14,7 +32,7 @@ Use your npm account username, password, and email (or use a token). Check that 
 npm whoami
 ```
 
-## 2. Package name and scope
+## 3. Package name and scope
 
 This package is named **`@richtext/react-rich-text`** (scoped under `@richtext`).
 
@@ -26,7 +44,7 @@ This package is named **`@richtext/react-rich-text`** (scoped under `@richtext`)
   npm pkg set name=@fmchisti/react-rich-text
   ```
 
-## 3. Build and publish
+## 4. Build and publish
 
 From the project root:
 
@@ -54,7 +72,7 @@ npm publish --access public
 npm publish --access public
 ```
 
-## 4. After publishing
+## 5. After publishing
 
 - Package page: `https://www.npmjs.com/package/@richtext/react-rich-text` (or your scope/name).
 - Install: `npm install @richtext/react-rich-text`
