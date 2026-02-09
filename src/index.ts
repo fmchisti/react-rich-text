@@ -37,6 +37,10 @@ export type {
   RichTextEditorProps,
 } from './core/types';
 
+// ---- Slate re-exports (so consumers don't need to depend on slate for common usage) ----
+export type { Descendant } from 'slate';
+export { Transforms } from 'slate';
+
 // ---- Core ----
 export { createRichTextEditor } from './core/createEditor';
 export { HOTKEYS, DEFAULT_INITIAL_VALUE } from './core/constants';

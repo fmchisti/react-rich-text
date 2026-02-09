@@ -1,11 +1,26 @@
-import React, { useState, useCallback } from "react";
-import type { Descendant } from "slate";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   RichTextEditor,
   htmlSerializer,
   markdownSerializer,
+  Transforms,
+  type Descendant,
+  type CustomContextMenuCommand,
+  type SlashMenuConfig,
 } from "@richtext/react-rich-text";
 // Styles are included by RichTextEditor. Package users do not need to import CSS.
+
+const customCommands: CustomContextMenuCommand[] = [
+  {
+    id: "insert-callout",
+    label: "Callout",
+    description: "Insert a callout box",
+    category: "insert",
+    keywords: ["callout", "box", "alert"],
+    iconPaths: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+    action: { type: "custom", customId: "insert-callout" },
+  },
+];
 
 const INITIAL_VALUE: Descendant[] = [
   {
@@ -178,6 +193,22 @@ export default function App() {
     setValue(newValue);
   }, []);
 
+  const slashMenuConfig: SlashMenuConfig = useMemo(
+    () => ({
+      enabled: true,
+      customCommands,
+      onContextMenuCommand(customId, editor) {
+        if (customId === "insert-callout") {
+          Transforms.insertNodes(editor, {
+            type: "paragraph",
+            children: [{ text: "Callout content..." }],
+          });
+        }
+      },
+    }),
+    []
+  );
+
   const getOutput = () => {
     if (showOutput === "json") return JSON.stringify(value, null, 2);
     if (showOutput === "html") return htmlSerializer.serialize(value);
@@ -203,6 +234,7 @@ export default function App() {
             placeholder='Start writing something amazing...'
             autoFocus
             minHeight={300}
+            slashMenu={slashMenuConfig}
             variables={[
               "name",
               "email",
