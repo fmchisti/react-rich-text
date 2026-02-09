@@ -80,7 +80,13 @@ function serializeNode(node: Descendant): string {
     }
     case 'image': {
       const el = element as ImageElement;
-      return `<img src="${escapeHtml(el.url)}" alt="${escapeHtml(el.alt ?? '')}" />`;
+      const w = el.width != null ? ` width="${el.width}"` : '';
+      const h = el.height != null ? ` height="${el.height}"` : '';
+      const imgTag = `<img src="${escapeHtml(el.url)}" alt="${escapeHtml(el.alt ?? '')}"${w}${h} />`;
+      if (el.align && el.align !== 'center') {
+        return `<div style="text-align:${el.align}">${imgTag}</div>`;
+      }
+      return imgTag;
     }
     case 'variable': {
       const el = element as VariableElement;

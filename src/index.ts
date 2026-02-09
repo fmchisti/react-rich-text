@@ -14,6 +14,7 @@ export type {
   NumberedListElement,
   ListItemElement,
   LinkElement as LinkElementType,
+  ImageAlign,
   ImageElement as ImageElementType,
   VariableElement as VariableElementType,
   VideoElement as VideoElementType,

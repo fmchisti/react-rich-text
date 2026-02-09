@@ -73,10 +73,19 @@ export type LinkElement = {
   children: Descendant[];
 };
 
+/** Alignment for image elements (left, center, right). */
+export type ImageAlign = 'left' | 'center' | 'right';
+
 export type ImageElement = {
   type: 'image';
   url: string;
   alt?: string;
+  /** Display width in pixels. When set, image is constrained to this width (height remains auto unless height is set). */
+  width?: number;
+  /** Display height in pixels. When set with width, both dimensions are applied. */
+  height?: number;
+  /** Horizontal alignment of the image. Defaults to center when omitted. */
+  align?: ImageAlign;
   children: [{ text: '' }];
 };
 
