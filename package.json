@@ -1,6 +1,6 @@
 {
   "name": "fc-react-rich-editor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An advanced, open-source, 100% customizable rich text editor for React with full TypeScript support",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -33,7 +33,9 @@
     "lint": "tsc --noEmit",
     "playground": "pnpm --filter playground dev",
     "clean": "rm -rf dist",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "publish:npm": "npm run lint && npm test && npm publish --access public",
+    "publish:dry-run": "npm run lint && npm test && npm publish --access public --dry-run"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
