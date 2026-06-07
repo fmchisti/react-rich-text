@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSlate } from 'slate-react';
 import { ReactEditor } from 'slate-react';
 import { Transforms } from 'slate';
 import type { RenderElementProps } from 'slate-react';
 import type { TableElement as TableElementType } from '../../core/types';
+import { safeFindPath } from '../../core/utils/slatePath';
 
 const MIN_COL_WIDTH_PX = 24;
 
@@ -28,7 +29,7 @@ function TableInner({ attributes, children, element }: RenderElementProps) {
   );
 
   const tablePath = useMemo(
-    () => ReactEditor.findPath(editor, element),
+    () => safeFindPath(editor, element) ?? [],
     [editor, element]
   );
 
@@ -47,6 +48,17 @@ function TableInner({ attributes, children, element }: RenderElementProps) {
 
   const displayWidths: number[] = liveWidths ?? baseWidths;
   latestWidthsRef.current = displayWidths;
+
+  const [handleExtent, setHandleExtent] = useState(100);
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table) return;
+    const update = () => setHandleExtent(Math.max(80, table.offsetHeight - 8));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(table);
+    return () => ro.disconnect();
+  }, [children, colCount]);
 
   const handleResizeStart = useCallback(
     (colIndex: number, e: React.MouseEvent) => {
@@ -192,6 +204,7 @@ function TableInner({ attributes, children, element }: RenderElementProps) {
               {i < colCount - 1 && (
                 <div
                   className="rte-table-resize-handle"
+                  style={{ bottom: -handleExtent }}
                   onMouseDown={(e) => handleResizeStart(i, e)}
                   title="Drag to resize column"
                 />

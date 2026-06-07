@@ -1,7 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { useSelected, useFocused, useSlateStatic, ReactEditor, type RenderElementProps } from 'slate-react';
+import { useSelected, useFocused, useSlateStatic, type RenderElementProps } from 'slate-react';
 import { Transforms } from 'slate';
 import type { ImageElement as ImageElementType, ImageAlign } from '../../core/types';
+import { safeFindPath } from '../../core/utils/slatePath';
 
 const MIN_IMAGE_WIDTH = 80;
 
@@ -66,8 +67,8 @@ export function ImageElement({ attributes, children, element }: RenderElementPro
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const path = ReactEditor.findPath(editor, element);
-      if (path == null) return;
+      const path = safeFindPath(editor, element);
+      if (!path) return;
       startXRef.current = e.clientX;
       const currentWidth = el.width ?? undefined;
       startWidthRef.current = currentWidth ?? (e.currentTarget.closest('.rte-image-inner')?.querySelector('img')?.getBoundingClientRect().width ?? 400);
@@ -94,8 +95,8 @@ export function ImageElement({ attributes, children, element }: RenderElementPro
     setIsResizing(false);
     setDragWidth(null);
     const width = currentWidthRef.current || startWidthRef.current;
-    const path = ReactEditor.findPath(editor, element);
-    if (path == null) return;
+    const path = safeFindPath(editor, element);
+    if (!path) return;
     Transforms.setNodes(
       editor,
       { width: Math.max(MIN_IMAGE_WIDTH, Math.min(MAX_IMAGE_WIDTH, Math.round(width))) },
@@ -108,8 +109,8 @@ export function ImageElement({ attributes, children, element }: RenderElementPro
 
   const setAlign = useCallback(
     (align: ImageAlign) => {
-      const path = ReactEditor.findPath(editor, element);
-      if (path == null) return;
+      const path = safeFindPath(editor, element);
+      if (!path) return;
       Transforms.setNodes(editor, { align }, { at: path });
     },
     [editor, element]

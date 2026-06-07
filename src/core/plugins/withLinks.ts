@@ -118,10 +118,17 @@ export function insertLink(editor: Editor, url: string, text?: string): void {
  * Simple URL detection.
  */
 function isUrl(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
   try {
-    const url = new URL(text);
+    const url = new URL(trimmed);
     return url.protocol === 'http:' || url.protocol === 'https:';
   } catch {
-    return false;
+    try {
+      const url = new URL(`https://${trimmed}`);
+      return url.hostname.includes('.');
+    } catch {
+      return false;
+    }
   }
 }

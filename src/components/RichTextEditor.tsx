@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Slate, Editable, type RenderElementProps, type RenderLeafProps, type RenderPlaceholderProps } from 'slate-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Slate, Editable, ReactEditor, type RenderElementProps, type RenderLeafProps } from 'slate-react';
 import type { Descendant } from 'slate';
 import { Range, Editor, Transforms, Element as SlateElement } from 'slate';
 import isHotkey from 'is-hotkey';
@@ -28,6 +28,7 @@ import {
   selectPreviousTableCell,
 } from '../core/plugins/withTables';
 import { toggleBlock } from '../core/utils/blocks';
+import { cloneRange, restoreSelection } from '../core/utils/selection';
 
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { Toolbar, DEFAULT_TOOLBAR_CONFIG } from './Toolbar/Toolbar';
@@ -64,24 +65,13 @@ import '../styles/hovering-toolbar.css';
 import '../styles/modal.css';
 import '../styles/slash-menu.css';
 
-/** Placeholder rendered inline so the cursor blinks on the same line as the placeholder text */
-function renderPlaceholderInline(props: RenderPlaceholderProps) {
-  const { children, attributes } = props;
-  return (
-    <span
-      {...attributes}
-      style={{
-        ...attributes.style,
-        position: 'relative',
-        display: 'inline',
-        width: 'auto',
-        maxWidth: 'none',
-        opacity: 1,
-      }}
-    >
-      {children}
-    </span>
-  );
+/** True when the document is a single empty paragraph (placeholder visible). */
+function isDocumentEmpty(editor: Editor): boolean {
+  const { children } = editor;
+  if (children.length !== 1) return false;
+  const first = children[0];
+  if (!SlateElement.isElement(first) || first.type !== 'paragraph') return false;
+  return Editor.isEmpty(editor, first);
 }
 
 /**
@@ -196,6 +186,13 @@ export function RichTextEditor({
   const [videoError, setVideoError] = useState('');
   const [showTableInsertModal, setShowTableInsertModal] = useState(false);
   const [modalAnchor, setModalAnchor] = useState<ModalAnchorPos>({ top: 0, left: 0 });
+  const savedSelectionRef = useRef<ReturnType<typeof cloneRange>>(null);
+  const serializeGenRef = useRef(0);
+  const isInternalChangeRef = useRef(false);
+
+  const saveSelection = useCallback(() => {
+    savedSelectionRef.current = cloneRange(editor.selection);
+  }, [editor]);
 
   /** Calculate position relative to .rte-root from the clicked button */
   const getAnchorFromEvent = useCallback((e?: React.MouseEvent) => {
@@ -219,15 +216,17 @@ export function RichTextEditor({
     if (isLinkActive(editor)) {
       unwrapLink(editor);
     } else {
+      saveSelection();
       const { selection } = editor;
       setLinkHasSelection(!!(selection && !Range.isCollapsed(selection)));
       setModalAnchor(getAnchorFromEvent(e));
       setShowLinkModal(true);
     }
-  }, [editor, getAnchorFromEvent]);
+  }, [editor, getAnchorFromEvent, saveSelection]);
 
   const handleLinkSubmit = useCallback(
     (url: string, text: string) => {
+      restoreSelection(editor, savedSelectionRef.current);
       if (linkHasSelection) {
         wrapLink(editor, url);
       } else {
@@ -239,12 +238,14 @@ export function RichTextEditor({
   );
 
   const handleImageClick = useCallback((e?: React.MouseEvent) => {
+    saveSelection();
     setModalAnchor(getAnchorFromEvent(e));
     setShowImageModal(true);
-  }, [getAnchorFromEvent]);
+  }, [getAnchorFromEvent, saveSelection]);
 
   const handleImageSubmit = useCallback(
     (url: string) => {
+      restoreSelection(editor, savedSelectionRef.current);
       insertImage(editor, url);
       setShowImageModal(false);
     },
@@ -252,13 +253,15 @@ export function RichTextEditor({
   );
 
   const handleVideoClick = useCallback((e?: React.MouseEvent) => {
+    saveSelection();
     setVideoError('');
     setModalAnchor(getAnchorFromEvent(e));
     setShowVideoModal(true);
-  }, [getAnchorFromEvent]);
+  }, [getAnchorFromEvent, saveSelection]);
 
   const handleVideoSubmit = useCallback(
     (url: string) => {
+      restoreSelection(editor, savedSelectionRef.current);
       const success = insertVideo(editor, url);
       if (success) {
         setShowVideoModal(false);
@@ -271,17 +274,31 @@ export function RichTextEditor({
   );
 
   const handleTableClick = useCallback((e?: React.MouseEvent) => {
+    saveSelection();
     setModalAnchor(getAnchorFromEvent(e));
     setShowTableInsertModal(true);
-  }, [getAnchorFromEvent]);
+  }, [getAnchorFromEvent, saveSelection]);
 
   const handleTableInsert = useCallback(
     (rows: number, cols: number) => {
+      restoreSelection(editor, savedSelectionRef.current);
       insertTable(editor, rows, cols);
       setShowTableInsertModal(false);
     },
     [editor]
   );
+
+  const closeLinkModal = useCallback(() => setShowLinkModal(false), []);
+  const closeImageModal = useCallback(() => setShowImageModal(false), []);
+  const closeVideoModal = useCallback(() => {
+    setShowVideoModal(false);
+    setVideoError('');
+  }, []);
+  const closeTableInsertModal = useCallback(() => setShowTableInsertModal(false), []);
+  const closeSlashMenu = useCallback(() => {
+    setCtxMenuOpen(false);
+    setCtxMenuSearch('');
+  }, []);
 
   /** Execute a command from the context menu */
   const handleCtxMenuSelect = useCallback(
@@ -412,22 +429,57 @@ export function RichTextEditor({
   // ---- Change handler ----
   const handleChange = useCallback(
     (newValue: Descendant[]) => {
+      isInternalChangeRef.current = true;
       internalValue.current = newValue;
       onChange?.(newValue);
 
-      // Lazy-import serializers only if needed
+      const gen = ++serializeGenRef.current;
+
       if (onHTMLChange) {
         import('../serializers/html').then(({ htmlSerializer }) => {
-          onHTMLChange(htmlSerializer.serialize(newValue));
+          if (gen !== serializeGenRef.current) return;
+          onHTMLChange(htmlSerializer.serialize(internalValue.current));
         });
       }
       if (onMarkdownChange) {
         import('../serializers/markdown').then(({ markdownSerializer }) => {
-          onMarkdownChange(markdownSerializer.serialize(newValue));
+          if (gen !== serializeGenRef.current) return;
+          onMarkdownChange(markdownSerializer.serialize(internalValue.current));
         });
       }
     },
     [onChange, onHTMLChange, onMarkdownChange]
+  );
+
+  /** Sync controlled `value` from parent when it changes externally */
+  useEffect(() => {
+    if (value === undefined) return;
+    if (isInternalChangeRef.current) {
+      isInternalChangeRef.current = false;
+      return;
+    }
+    const external = JSON.stringify(value);
+    const current = JSON.stringify(editor.children);
+    if (external !== current) {
+      editor.children = value;
+      editor.onChange();
+    }
+  }, [value, editor]);
+
+  const editableStyle = useMemo(
+    () =>
+      ({
+        ...(minHeight != null
+          ? { minHeight: typeof minHeight === 'number' ? `${minHeight}px` : minHeight }
+          : {}),
+        ['--rte-editable-min-height']:
+          minHeight != null
+            ? typeof minHeight === 'number'
+              ? `${minHeight}px`
+              : minHeight
+            : '150px',
+      }) as React.CSSProperties,
+    [minHeight]
   );
 
   // ---- Keyboard handler ----
@@ -544,6 +596,26 @@ export function RichTextEditor({
     [editor, userOnKeyDown, ctxMenuOpen]
   );
 
+  /** Focus and show caret when clicking anywhere in an empty editor */
+  const handleEditableMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (readOnly) return;
+      const target = event.target as HTMLElement;
+      if (target.closest('[contenteditable="false"]')) return;
+
+      const editable = event.currentTarget;
+      const clickedInside = editable.contains(target);
+      if (!clickedInside) return;
+
+      if (isDocumentEmpty(editor) || target === editable) {
+        event.preventDefault();
+        ReactEditor.focus(editor);
+        Transforms.select(editor, Editor.start(editor, [0]));
+      }
+    },
+    [editor, readOnly]
+  );
+
   return (
     <ThemeProvider theme={theme}>
       <div
@@ -583,17 +655,13 @@ export function RichTextEditor({
           {/* Editable area */}
           <Editable
             className={`rte-editable${editorClassName ? ` ${editorClassName}` : ''}`}
-            style={
-              minHeight != null
-                ? { minHeight: typeof minHeight === 'number' ? `${minHeight}px` : minHeight }
-                : undefined
-            }
+            style={editableStyle}
             renderElement={renderElement}
             renderLeaf={renderLeaf}
-            renderPlaceholder={renderPlaceholderInline}
             placeholder={placeholder}
             readOnly={readOnly}
             autoFocus={autoFocus}
+            onMouseDown={handleEditableMouseDown}
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             onBlur={onBlur}
@@ -611,7 +679,7 @@ export function RichTextEditor({
               customCommands={typeof slashConfig === 'object' ? slashConfig.customCommands : undefined}
               variables={variables}
               onSelect={handleCtxMenuSelect}
-              onClose={() => { setCtxMenuOpen(false); setCtxMenuSearch(''); }}
+              onClose={closeSlashMenu}
             />
           )}
         </Slate>
@@ -622,14 +690,14 @@ export function RichTextEditor({
           hasSelection={linkHasSelection}
           anchorPos={modalAnchor}
           onSubmit={handleLinkSubmit}
-          onCancel={() => setShowLinkModal(false)}
+          onCancel={closeLinkModal}
         />
 
         <ImageModal
           open={showImageModal}
           anchorPos={modalAnchor}
           onSubmit={handleImageSubmit}
-          onCancel={() => setShowImageModal(false)}
+          onCancel={closeImageModal}
           onImageUpload={onImageUpload}
         />
 
@@ -644,14 +712,14 @@ export function RichTextEditor({
           icon={<VideoIcon />}
           anchorPos={modalAnchor}
           onSubmit={handleVideoSubmit}
-          onCancel={() => { setShowVideoModal(false); setVideoError(''); }}
+          onCancel={closeVideoModal}
         />
 
         <TableInsertModal
           open={showTableInsertModal}
           anchorPos={modalAnchor}
           onSubmit={handleTableInsert}
-          onCancel={() => setShowTableInsertModal(false)}
+          onCancel={closeTableInsertModal}
         />
       </div>
     </ThemeProvider>

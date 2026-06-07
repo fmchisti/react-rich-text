@@ -1,5 +1,6 @@
-import { Editor, Transforms } from 'slate';
+import { Transforms, type Editor } from 'slate';
 import { parseVideoUrl } from '../utils/video';
+import { insertTrailingParagraph, shouldInsertTrailingParagraph } from '../utils/insertVoid';
 
 /**
  * Insert a video element at the current selection.
@@ -26,11 +27,9 @@ export function insertVideo(editor: Editor, url: string, caption?: string): bool
   };
 
   Transforms.insertNodes(editor, video as any);
-  // Insert a paragraph after so the cursor has somewhere to go
-  Transforms.insertNodes(editor, {
-    type: 'paragraph',
-    children: [{ text: '' }],
-  } as any);
+  if (shouldInsertTrailingParagraph(editor)) {
+    insertTrailingParagraph(editor);
+  }
 
   return true;
 }

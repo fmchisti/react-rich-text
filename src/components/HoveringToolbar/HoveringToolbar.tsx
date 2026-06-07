@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useSlate } from 'slate-react';
+import { useSlate, useSlateSelector, ReactEditor } from 'slate-react';
 import { Editor, Range } from 'slate';
 import type { HoveringToolbarConfig, HoveringToolbarItemId } from '../../core/types';
 import { isMarkActive, toggleMark } from '../../core/utils/marks';
@@ -311,7 +311,7 @@ export function HoveringToolbar({
   const orderedIds = React.useMemo(() => {
     const order = config?.order ?? DEFAULT_HOVERING_ORDER;
     return order.filter((id) => isItemEnabled(id, resolved as Record<string, boolean>));
-  }, [config, fullMode]);
+  }, [config?.order, fullMode, resolved.bold, resolved.italic, resolved.underline, resolved.strikethrough, resolved.code, resolved.link, resolved.fontColor, resolved.fontSize, resolved.align]);
 
   // Update scroll button visibility when scroll position or size changes
   const updateScrollState = useCallback(() => {
@@ -323,12 +323,11 @@ export function HoveringToolbar({
     setCanScrollRight(right);
   }, []);
 
-  // Position the hovering toolbar above the selection
-  useEffect(() => {
+  const selection = useSlateSelector((e) => e.selection);
+
+  const updateToolbarPosition = useCallback(() => {
     const el = ref.current;
     if (!el) return;
-
-    const { selection } = editor;
 
     if (
       !selection ||
@@ -337,16 +336,14 @@ export function HoveringToolbar({
     ) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
-      setShowLinkInput(false);
-      setShowColorPicker(false);
-      return;
+      return false;
     }
 
     const domSelection = window.getSelection();
     if (!domSelection || domSelection.rangeCount === 0) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
-      return;
+      return false;
     }
 
     const domRange = domSelection.getRangeAt(0);
@@ -355,19 +352,49 @@ export function HoveringToolbar({
     if (rect.width === 0 && rect.height === 0) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
-      return;
+      return false;
     }
 
     const elRect = el.getBoundingClientRect();
-    const top = rect.top - elRect.height - 8 + window.scrollY;
-    const left = rect.left + rect.width / 2 - elRect.width / 2 + window.scrollX;
+    const top = rect.top - elRect.height - 8;
+    const left = rect.left + rect.width / 2 - elRect.width / 2;
 
     el.style.opacity = '1';
     el.style.pointerEvents = 'auto';
     el.style.top = `${Math.max(4, top)}px`;
     el.style.left = `${Math.max(4, left)}px`;
-    setTimeout(updateScrollState, 0);
-  });
+    return true;
+  }, [editor, selection]);
+
+  useEffect(() => {
+    const visible = updateToolbarPosition();
+    if (!visible) {
+      setShowLinkInput(false);
+      setShowColorPicker(false);
+    } else {
+      setTimeout(updateScrollState, 0);
+    }
+  }, [selection, updateToolbarPosition, updateScrollState]);
+
+  useEffect(() => {
+    const onScrollOrResize = () => updateToolbarPosition();
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+
+    let editableEl: HTMLElement | null = null;
+    try {
+      editableEl = ReactEditor.toDOMNode(editor, editor) as HTMLElement;
+      editableEl?.addEventListener('scroll', onScrollOrResize);
+    } catch {
+      // editor not mounted yet
+    }
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+      editableEl?.removeEventListener('scroll', onScrollOrResize);
+    };
+  }, [editor, updateToolbarPosition]);
 
   // Listen to scroll on the scroll container
   useEffect(() => {

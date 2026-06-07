@@ -1,5 +1,8 @@
 import { Editor, Transforms, Element as SlateElement } from 'slate';
+import type { BaseRange } from 'slate';
 import { VOID_TYPES, type BlockType } from '../types';
+import { insertTrailingParagraph, shouldInsertTrailingParagraph } from '../utils/insertVoid';
+import { restoreSelection } from '../utils/selection';
 
 /**
  * Plugin that handles image void elements.
@@ -23,13 +26,21 @@ export function withImages(editor: Editor): Editor {
     const { files } = data;
 
     if (files && files.length > 0) {
+      const savedSelection: BaseRange | null = editor.selection
+        ? {
+            anchor: { ...editor.selection.anchor, path: [...editor.selection.anchor.path] },
+            focus: { ...editor.selection.focus, path: [...editor.selection.focus.path] },
+          }
+        : null;
+
       for (const file of Array.from(files)) {
         if (!file.type.startsWith('image/')) continue;
 
         const reader = new FileReader();
         reader.addEventListener('load', () => {
+          if (!restoreSelection(editor, savedSelection) && !editor.selection) return;
           const url = reader.result as string;
-          insertImage(editor, url);
+          if (typeof url === 'string') insertImage(editor, url);
         });
         reader.readAsDataURL(file);
       }
@@ -58,11 +69,9 @@ export function insertImage(editor: Editor, url: string, alt?: string): void {
     children: [{ text: '' as const }],
   };
   Transforms.insertNodes(editor, image as any);
-  // Insert a paragraph after so the cursor has somewhere to go
-  Transforms.insertNodes(editor, {
-    type: 'paragraph',
-    children: [{ text: '' }],
-  } as any);
+  if (shouldInsertTrailingParagraph(editor)) {
+    insertTrailingParagraph(editor);
+  }
 }
 
 /**

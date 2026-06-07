@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { useSelected, useFocused, useSlate, ReactEditor, type RenderElementProps } from 'slate-react';
 import { Editor, Transforms } from 'slate';
 import type { VariableElement as VariableElementType } from '../../core/types';
+import { safeFindPath } from '../../core/utils/slatePath';
 
 /**
  * Renders an inline variable as a styled chip/badge.
@@ -19,7 +20,8 @@ export function VariableElement({ attributes, children, element }: RenderElement
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      const path = ReactEditor.findPath(editor, element);
+      const path = safeFindPath(editor, element);
+      if (!path) return;
       const after = Editor.after(editor, path);
       if (after) {
         Transforms.select(editor, after);

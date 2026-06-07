@@ -1,74 +1,135 @@
-# Codebase Audit: Bugs, Best Practices, Memoization
+# Codebase Audit: Bugs, Best Practices, Optimizations
 
-**Date:** 2025-02  
-**Scope:** React Rich Text editor — core, components, plugins, serializers.
+**Date:** 2026-02  
+**Scope:** `fc-react-rich-editor` — core, components, plugins, serializers.
 
 ---
 
-## 1. Bugs fixed in this pass
+## Summary (latest pass)
+
+| Category | Fixed in this pass |
+|----------|-------------------|
+| **Modal selection** | Save/restore Slate selection before link/image/video/table modals open |
+| **Controlled `value`** | Sync external `value` prop into editor when parent updates |
+| **Serialization race** | Generation counter drops stale async HTML/Markdown callbacks |
+| **Hovering toolbar** | Effect deps fixed; `position: fixed`; scroll/resize listeners |
+| **Void inserts** | Trailing paragraph skipped inside lists/tables/blockquotes |
+| **Image paste** | Restore selection before async `FileReader` insert |
+| **findPath** | `safeFindPath()` wrapper — no false `null` checks on throwing API |
+| **HTML security** | `fontColor` from pasted HTML allowlisted |
+| **Auto-link** | `www.example.com` URLs recognized on paste/space |
+| **Table resize** | Handle height tracks measured table height via `ResizeObserver` |
+| **Perf** | Stable modal callbacks; memoized `editableStyle` |
+
+All **93 tests** pass after fixes.
+
+---
+
+## P0 — Critical (fixed)
+
+### 1. Selection lost when modals open
+**Files:** `RichTextEditor.tsx`, `core/utils/selection.ts`  
+**Fix:** `saveSelection()` before opening modals; `restoreSelection()` before `wrapLink`, `insertImage`, `insertVideo`, `insertTable`.
+
+### 2. Controlled `value` not synced
+**File:** `RichTextEditor.tsx`  
+**Fix:** `useEffect` compares external `value` to `editor.children` and updates when parent changes content (with `isInternalChangeRef` to avoid feedback loops).
+
+### 3. Async HTML/Markdown race
+**File:** `RichTextEditor.tsx`  
+**Fix:** `serializeGenRef` increments on each change; stale `import().then()` callbacks are ignored.
+
+---
+
+## P1 — High impact (fixed)
+
+### 4. HoveringToolbar ran positioning on every render
+**File:** `HoveringToolbar.tsx`  
+**Fix:** `useSlateSelector` for selection; `updateToolbarPosition` in `useEffect` with proper deps.
+
+### 5. Hovering toolbar stale on scroll
+**Files:** `HoveringToolbar.tsx`, `hovering-toolbar.css`  
+**Fix:** `position: fixed` + viewport coords; `scroll`/`resize` listeners on window and editable.
+
+### 6. `insertImage` / `insertVideo` trailing paragraph in wrong context
+**Files:** `withImages.ts`, `withVideos.ts`, `core/utils/insertVoid.ts`  
+**Fix:** `shouldInsertTrailingParagraph()` skips list-item, blockquote, table structures.
+
+### 7. Image paste async without selection
+**File:** `withImages.ts`  
+**Fix:** Save selection before `FileReader`; restore on load.
+
+### 8. `ReactEditor.findPath` null checks incorrect
+**Files:** `ImageElement.tsx`, `VariableElement.tsx`, `Table.tsx`, `core/utils/slatePath.ts`  
+**Fix:** `safeFindPath()` wraps in try/catch.
+
+### 9. Unsanitized `fontColor` from HTML paste
+**File:** `serializers/html.ts`  
+**Fix:** Allowlist hex, rgb/rgba, hsl/hsla, named colors; reject `url(`, `;`, etc.
+
+### 10. Auto-link required `http://` prefix
+**File:** `withLinks.ts`  
+**Fix:** Fallback `https://${text}` for hostnames like `www.example.com`.
+
+---
+
+## P2 — Medium (fixed / partial)
+
+| Item | Status |
+|------|--------|
+| Table resize handle height (`bottom: -100px` fixed) | **Fixed** — dynamic `handleExtent` from `ResizeObserver` |
+| HoveringToolbar `orderedIds` stale deps | **Fixed** — explicit `resolved.*` deps |
+| Unstable modal `onClose` inline functions | **Fixed** — `useCallback` handlers |
+| Unstable `Editable` style object | **Fixed** — `useMemo` `editableStyle` |
+
+---
+
+## P2 — Remaining (not fixed — lower priority)
+
+| Item | Location | Suggestion |
+|------|----------|------------|
+| **No `withTables` normalization plugin** | `createEditor.ts` | Add `normalizeNode` for table → row → cell structure |
+| **Context menu search** | `SlashMenu` | `ctxMenuSearch` never wired to keyboard input |
+| **Variable sub-menu keyboard** | `SlashMenu.tsx` | Arrow/Enter disabled when `showVarSub` is true |
+| **Markdown tables** | `markdown.ts` | Tables fall through to default; add GFM or HTML fallback |
+| **Markdown mark nesting** | `markdown.ts` | Bold + code order may produce invalid MD |
+| **`plugins` prop mount-only** | `RichTextEditor.tsx` | Documented; recreate editor if plugins change |
+| **Element `React.memo`** | Paragraph, Leaf, etc. | Profile first; Table already memoized |
+| **`renderElement` typed `any`** | `types.ts` | Use `RenderElementProps` from slate-react |
+| **SlashMenu `dangerouslySetInnerHTML`** | `SlashMenu.tsx` | Sanitize custom command SVG paths |
+
+---
+
+## Previous pass (still valid)
 
 | Item | Location | Fix |
 |------|----------|-----|
-| **Empty table crash** | `Table.tsx` | When `rows.length === 0` or `colCount === 0`, `rows[0]` and `baseWidths` were used unsafely. Added guard: if `colCount <= 0`, render a minimal table (no resize row) and return early. |
-| **Unstable table ref callback** | `Table.tsx` | `setTableRef` depended on `[attributes]`, so it was recreated every render (Slate passes new `attributes` each time). Switched to a ref (`slateRefRef`) to hold the Slate ref and made `setTableRef` depend on `[]` so it’s stable. |
-| **Redundant path computation** | `Table.tsx` | `ReactEditor.findPath(editor, element)` ran every render. Wrapped in `useMemo([editor, element])` to avoid repeated work. |
+| Empty table crash | `Table.tsx` | Guard when `colCount <= 0` |
+| Unstable table ref callback | `Table.tsx` | `slateRefRef` + stable `setTableRef` |
+| Table memoization | `Table.tsx` | `React.memo` on Table/TableRow/TableCell |
 
 ---
 
-## 2. Memoization added
+## Empty editor click / cursor (fixed earlier)
 
-| Component | Change | Reason |
-|-----------|--------|--------|
-| **Table** | `React.memo(TableInner)` | Rendered for every table in the document; avoids re-renders when selection or other nodes change. |
-| **TableRow** | `React.memo(TableRowInner)` | Many rows per table; memo reduces re-renders when parent or sibling state changes. |
-| **TableCell** | `React.memo(TableCellInner)` | Many cells per table; same as above. |
-| **Table baseWidths** | `useMemo([tableEl.colWidths, colCount])` | Derivation from element; only recompute when widths or column count change. |
-| **Table tablePath** | `useMemo([editor, element])` | Path is stable for the same (editor, element); avoids repeated `findPath` on every render. |
+- Removed flex placeholder layout that hid caret
+- `handleEditableMouseDown` focuses empty editor
+- First block `min-height` fills editable area via `--rte-editable-min-height`
 
 ---
 
-## 3. Best-practice and stability notes
+## Testing
 
-| Topic | Location | Note |
-|-------|----------|------|
-| **Editor creation** | `RichTextEditor.tsx` | `useMemo(() => createRichTextEditor(plugins), [])` — `plugins` intentionally omitted so editor identity is stable; plugins are applied only at mount. Comment added in code. |
-| **Controlled value** | `RichTextEditor.tsx` | Slate’s `initialValue` is used only on mount. If the parent changes the `value` prop later, the editor content is not synced from the outside. For full controlled usage, the app would need to reset or replace editor children when `value` changes; document this for consumers. |
-| **Modal positioning** | `InputModal`, `TableInsertModal` | Position is set in `useEffect` after open; in rare cases the panel may not have layout yet. If needed, run the position logic inside `requestAnimationFrame` or after a short delay so layout is ready. |
+```bash
+npm run lint   # tsc --noEmit
+npm test       # 93 tests
+npm run build
+```
 
----
-
-## 4. Memoization already in good shape
-
-- **RichTextEditor:** `toolbarConfig`, `hoveringConfig`, `slashConfig`, `initialValue` are `useMemo`’d with correct deps; handlers are `useCallback`’d with appropriate deps.
-- **SlashMenu:** `filtered`, `flatList` are `useMemo`’d; `handleSelect`, `handleVariableSelect` are `useCallback`’d.
-- **TableInsertModal / InputModal / LinkModal:** Submit and overlay handlers are `useCallback`’d.
-- **ThemeProvider:** `mergedTheme` and `cssVars` are `useMemo`’d.
-- **HoveringToolbar:** `orderedIds` is `useMemo`’d; scroll and action handlers are `useCallback`’d.
+Recommended future tests: modal selection restore, controlled `value` sync, table normalization.
 
 ---
 
-## 5. Optional follow-ups (lower priority)
+## Author
 
-| Item | Suggestion |
-|------|------------|
-| **Toolbar** | `renderItem` is recreated every render and returns buttons with inline handlers (e.g. `() => toggleMark(editor, item.mark)`). For fewer allocations, you could prebuild a map of stable callbacks keyed by item type/mark, or wrap `renderItem` in `useCallback` with the minimal deps (e.g. `editor`, `config`). |
-| **Element components** | Other elements (Paragraph, Heading, Blockquote, etc.) could be wrapped in `React.memo` if profiling shows unnecessary re-renders; table elements were the highest impact. |
-| **withTables path handling** | `getTableSelection` assumes the table is a direct child of the document (path length ≥ 3, `path[0]` = block index). If you ever support nested blocks (e.g. table inside a block), path logic would need to be generalized. |
-| **HTML serializer** | Table serialization uses `escapeHtml(JSON.stringify(table.colWidths))`; for very large `colWidths` arrays this is fine; no change needed unless you add non-numeric or huge data. |
-
----
-
-## 6. Testing and types
-
-- **Types:** Table element uses `TableElement` with optional `colWidths`; plugin and components use consistent types.
-- **Tests:** Existing serializer tests cover table HTML round-trip; adding a test for empty table (0 rows/cols) would lock in the guard behavior.
-- **Accessibility:** Resize handle has `title="Drag to resize column"`; resize line has `aria-hidden`; modals use `role="dialog"` and `aria-modal="true"`.
-
----
-
-## Summary
-
-- **Bugs addressed:** Empty table guard, stable table ref callback, memoized table path and base widths.
-- **Memoization:** Table, TableRow, TableCell wrapped with `React.memo`; Table path and baseWidths memoized.
-- **Stability:** Editor `useMemo` documented; ref forwarding in Table made stable.
-- **Docs:** This audit and inline comments document controlled-mode behavior and optional improvements.
+**Fahim Mahmud Chisti** — [fahimcode.com](https://fahimcode.com/) · [GitHub](https://github.com/fmchisti/react-rich-text)

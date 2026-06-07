@@ -371,9 +371,15 @@ function parseTextAlignFromStyle(style: string): Align | null {
  * Matches `color: #hex` or `color: rgb(...)` etc.
  */
 function parseFontColorFromStyle(style: string): string | null {
-  // Match `color:` but not `background-color:` or `border-color:`
   const match = style.match(/(?:^|;)\s*color:\s*([^;]+)/);
-  return match ? match[1].trim() : null;
+  if (!match) return null;
+  const color = match[1].trim();
+  if (/[;{}]|<|url\(|expression/i.test(color)) return null;
+  if (/^#[0-9a-f]{3,8}$/i.test(color)) return color;
+  if (/^rgba?\(/i.test(color)) return color;
+  if (/^hsla?\(/i.test(color)) return color;
+  if (/^[a-z]+$/i.test(color)) return color;
+  return null;
 }
 
 function escapeHtml(str: string): string {

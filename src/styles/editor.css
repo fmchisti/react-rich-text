@@ -35,41 +35,28 @@
   overflow-x: hidden;
 }
 
-/* When empty (placeholder visible), keep content aligned to top */
-.rte-editable:has([data-slate-placeholder]) {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
-
-/* Ensure Slate's inner container takes full width */
-.rte-editable:has([data-slate-placeholder]) > * {
+/* When empty, stretch the first block so the full min-height area is clickable */
+.rte-editable:has([data-slate-placeholder]) > *:first-child {
+  position: relative;
+  min-height: calc(var(--rte-editable-min-height, 150px) - 2 * var(--rte-padding, 16px));
   width: 100%;
+  box-sizing: border-box;
+  cursor: text;
 }
 
 /* ---- Placeholder ---- */
 
-/* Leaf with placeholder: flex so we can put cursor before placeholder text */
-.rte-editable [data-slate-leaf]:has([data-slate-placeholder]) {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;
-}
-
-/* Placeholder appears after the cursor (cursor is first child in DOM, we show it first with order) */
 .rte-editable [data-slate-placeholder] {
   color: var(--rte-placeholder-color) !important;
   opacity: 1 !important;
   pointer-events: none !important;
   user-select: none !important;
-  position: relative !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: none !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: max-content;
+  max-width: 100%;
   text-align: left !important;
-  order: 1 !important;
 }
 
 /* ---- Block Elements ---- */
@@ -406,7 +393,7 @@
   top: 0;
   right: 0;
   width: 8px;
-  bottom: -100px;
+  bottom: -80px;
   cursor: col-resize;
   z-index: 1;
   margin-right: -4px; /* center hit area on the boundary */

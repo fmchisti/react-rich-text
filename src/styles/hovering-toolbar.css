@@ -3,7 +3,7 @@
    ============================================================ */
 
 .rte-hovering-toolbar {
-  position: absolute;
+  position: fixed;
   z-index: 9999;
   top: -9999px;
   left: -9999px;
