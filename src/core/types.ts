@@ -96,6 +96,27 @@ export type VariableElement = {
   children: [{ text: '' }];
 };
 
+/** An image supplied at render time for a variable, such as a client signature. */
+export type VariableImageValue = {
+  type: 'image';
+  /** Image URL. Data and blob URLs are also supported by the browser. */
+  src: string;
+  /** Accessible description. Defaults to a human-readable version of the variable name. */
+  alt?: string;
+  /** Requested display width in pixels. The editor constrains oversized images. */
+  width?: number;
+  /** Requested display height in pixels. */
+  height?: number;
+};
+
+/** A variable may resolve to ordinary text or an inline image at render time. */
+export type VariableValue = string | VariableImageValue;
+
+/** Values used to resolve template variables without changing the saved document. */
+export type VariableValues = Readonly<
+  Record<string, VariableValue | null | undefined>
+>;
+
 export type VideoProvider = 'youtube' | 'vimeo' | 'dailymotion' | 'loom' | 'wistia' | 'direct';
 
 export type VideoElement = {
@@ -409,6 +430,12 @@ export interface RichTextEditorProps {
 
   /** List of available variable names for {{variable}} insertion (e.g. ['name', 'email', 'company']) */
   variables?: string[];
+
+  /**
+   * Runtime values for variables. Strings render as text; image values can render
+   * dynamic content such as a client signature. Missing values remain {{variable}} chips.
+   */
+  variableValues?: VariableValues;
 
   /** Hovering toolbar shown on text selection. `true` = default, `false` = disabled, object = custom config */
   hoveringToolbar?: boolean | HoveringToolbarConfig;

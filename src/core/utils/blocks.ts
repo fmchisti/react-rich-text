@@ -53,6 +53,12 @@ export function toggleBlock(
     split: true,
   });
 
+  // Remove properties that only belong to the previous block type. Without
+  // this, heading levels and code languages leak into paragraphs/lists.
+  Transforms.unsetNodes(editor, ['level', 'language'] as any, {
+    match: (n) => SlateElement.isElement(n) && Editor.isBlock(editor, n),
+  });
+
   if (isActive) {
     // Deactivate -> revert to paragraph
     Transforms.setNodes(editor, { type: 'paragraph' } as any);

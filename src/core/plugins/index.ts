@@ -1,6 +1,7 @@
 export { withInlines } from './withInlines';
 export { withImages, insertImage } from './withImages';
 export { withLinks, wrapLink, unwrapLink, insertLink, isLinkActive } from './withLinks';
+export { withLists } from './withLists';
 export { withShortcuts } from './withShortcuts';
 export { withVariables, insertVariable } from './withVariables';
 export { insertVideo } from './withVideos';

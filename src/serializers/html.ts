@@ -12,6 +12,8 @@ import type {
   TableElement,
   Align,
 } from '../core/types';
+import { normalizeLinkUrl } from '../core/utils/url';
+import { parseVideoUrl } from '../core/utils/video';
 
 // ---------------------------------------------------------------------------
 // Serialize: Slate JSON -> HTML
@@ -30,10 +32,12 @@ function serializeText(node: FormattedText): string {
 
   // Build inline style string for fontSize and fontColor
   const styles: string[] = [];
-  if (node.fontSize) styles.push(`font-size:${node.fontSize}px`);
-  if (node.fontColor) styles.push(`color:${node.fontColor}`);
+  const fontSize = sanitizeFontSize(node.fontSize);
+  const fontColor = sanitizeFontColor(node.fontColor);
+  if (fontSize !== null) styles.push(`font-size:${fontSize}px`);
+  if (fontColor) styles.push(`color:${fontColor}`);
   if (styles.length > 0) {
-    text = `<span style="${styles.join(';')}">${text}</span>`;
+    text = `<span style="${escapeHtml(styles.join(';'))}">${text}</span>`;
   }
 
   return text;
@@ -49,21 +53,25 @@ function serializeNode(node: Descendant): string {
 
   switch (element.type) {
     case 'paragraph': {
-      const alignStyle = (element as any).align ? ` style="text-align:${(element as any).align}"` : '';
+      const align = sanitizeAlign((element as any).align);
+      const alignStyle = align ? ` style="text-align:${align}"` : '';
       return `<p${alignStyle}>${children}</p>`;
     }
     case 'heading': {
       const el = element as HeadingElement;
-      const alignStyle = el.align ? ` style="text-align:${el.align}"` : '';
+      const align = sanitizeAlign(el.align);
+      const alignStyle = align ? ` style="text-align:${align}"` : '';
       return `<h${el.level}${alignStyle}>${children}</h${el.level}>`;
     }
     case 'blockquote': {
-      const alignStyle = (element as any).align ? ` style="text-align:${(element as any).align}"` : '';
+      const align = sanitizeAlign((element as any).align);
+      const alignStyle = align ? ` style="text-align:${align}"` : '';
       return `<blockquote${alignStyle}>${children}</blockquote>`;
     }
     case 'code-block': {
       const el = element as CodeBlockElement;
-      const langAttr = el.language ? ` class="language-${el.language}"` : '';
+      const language = sanitizeLanguage(el.language);
+      const langAttr = language ? ` class="language-${escapeHtml(language)}"` : '';
       return `<pre><code${langAttr}>${children}</code></pre>`;
     }
     case 'bulleted-list':
@@ -71,20 +79,25 @@ function serializeNode(node: Descendant): string {
     case 'numbered-list':
       return `<ol>${children}</ol>`;
     case 'list-item': {
-      const alignStyle = (element as any).align ? ` style="text-align:${(element as any).align}"` : '';
+      const align = sanitizeAlign((element as any).align);
+      const alignStyle = align ? ` style="text-align:${align}"` : '';
       return `<li${alignStyle}>${children}</li>`;
     }
     case 'link': {
       const el = element as LinkElement;
-      return `<a href="${escapeHtml(el.url)}">${children}</a>`;
+      const safeUrl = normalizeLinkUrl(el.url);
+      return safeUrl ? `<a href="${escapeHtml(safeUrl)}">${children}</a>` : children;
     }
     case 'image': {
       const el = element as ImageElement;
-      const w = el.width != null ? ` width="${el.width}"` : '';
-      const h = el.height != null ? ` height="${el.height}"` : '';
+      const width = sanitizeDimension(el.width);
+      const height = sanitizeDimension(el.height);
+      const w = width !== null ? ` width="${width}"` : '';
+      const h = height !== null ? ` height="${height}"` : '';
       const imgTag = `<img src="${escapeHtml(el.url)}" alt="${escapeHtml(el.alt ?? '')}"${w}${h} />`;
-      if (el.align && el.align !== 'center') {
-        return `<div style="text-align:${el.align}">${imgTag}</div>`;
+      const align = sanitizeImageAlign(el.align);
+      if (align && align !== 'center') {
+        return `<div style="text-align:${align}">${imgTag}</div>`;
       }
       return imgTag;
     }
@@ -94,10 +107,16 @@ function serializeNode(node: Descendant): string {
     }
     case 'video': {
       const el = element as VideoElement;
-      if (el.provider === 'direct') {
-        return `<div data-video-provider="${el.provider}" data-video-url="${escapeHtml(el.url)}"><video src="${escapeHtml(el.embedUrl)}" controls></video>${el.caption ? `<p>${escapeHtml(el.caption)}</p>` : ''}</div>`;
+      const caption = el.caption?.trim() || '';
+      const parsedVideo = parseVideoUrl(el.url);
+      if (!parsedVideo || parsedVideo.provider !== el.provider) {
+        return caption ? `<p>${escapeHtml(caption)}</p>` : '';
       }
-      return `<div data-video-provider="${el.provider}" data-video-url="${escapeHtml(el.url)}"><iframe src="${escapeHtml(el.embedUrl)}" frameborder="0" allowfullscreen></iframe>${el.caption ? `<p>${escapeHtml(el.caption)}</p>` : ''}</div>`;
+      const provider = escapeHtml(parsedVideo.provider);
+      if (parsedVideo.provider === 'direct') {
+        return `<div data-video-provider="${provider}" data-video-url="${escapeHtml(parsedVideo.url)}"><video src="${escapeHtml(parsedVideo.embedUrl)}" controls></video>${caption ? `<p>${escapeHtml(caption)}</p>` : ''}</div>`;
+      }
+      return `<div data-video-provider="${provider}" data-video-url="${escapeHtml(parsedVideo.url)}"><iframe src="${escapeHtml(parsedVideo.embedUrl)}" title="${escapeHtml(caption || 'Embedded video')}" frameborder="0" allowfullscreen></iframe>${caption ? `<p>${escapeHtml(caption)}</p>` : ''}</div>`;
     }
     case 'table': {
       const table = element as TableElement;
@@ -192,8 +211,17 @@ function deserializeNode(el: Node): Descendant | Descendant[] | null {
       const align = blockAlign();
       return { type: 'blockquote', children, ...(align && { align }) };
     }
-    case 'PRE':
-      return { type: 'code-block', children: [{ text: htmlEl.textContent ?? '' }] };
+    case 'PRE': {
+      const languageClass = htmlEl.querySelector('code')?.className
+        .split(/\s+/)
+        .find((name) => name.startsWith('language-'));
+      const language = sanitizeLanguage(languageClass?.slice('language-'.length));
+      return {
+        type: 'code-block',
+        ...(language && { language }),
+        children: [{ text: htmlEl.textContent ?? '' }],
+      };
+    }
     case 'UL':
       return { type: 'bulleted-list', children };
     case 'OL':
@@ -230,8 +258,8 @@ function deserializeNode(el: Node): Descendant | Descendant[] | null {
       return { type: 'table-cell', header: true, children: thChildren } as Descendant;
     }
     case 'A': {
-      const url = htmlEl.getAttribute('href') ?? '';
-      return { type: 'link', url, children };
+      const url = normalizeLinkUrl(htmlEl.getAttribute('href') ?? '');
+      return url ? { type: 'link', url, children } : children;
     }
     case 'IMG': {
       const src = htmlEl.getAttribute('src') ?? '';
@@ -269,16 +297,15 @@ function deserializeNode(el: Node): Descendant | Descendant[] | null {
       const videoProvider = htmlEl.getAttribute('data-video-provider');
       const videoUrl = htmlEl.getAttribute('data-video-url');
       if (videoProvider && videoUrl) {
-        const iframe = htmlEl.querySelector('iframe');
-        const video = htmlEl.querySelector('video');
-        const embedUrl = iframe?.getAttribute('src') ?? video?.getAttribute('src') ?? videoUrl;
+        const parsedVideo = parseVideoUrl(videoUrl);
+        if (!parsedVideo || parsedVideo.provider !== videoProvider) return children.length === 1 ? children[0] : children;
         const captionEl = htmlEl.querySelector('p');
         const caption = captionEl?.textContent ?? '';
         return {
           type: 'video',
-          url: videoUrl,
-          embedUrl,
-          provider: videoProvider,
+          url: parsedVideo.url,
+          embedUrl: parsedVideo.embedUrl,
+          provider: parsedVideo.provider,
           caption,
           children: [{ text: '' as const }],
         } as any;
@@ -351,7 +378,7 @@ function deserialize(html: string): Descendant[] {
  */
 function parseFontSizeFromStyle(style: string): number | null {
   const match = style.match(/font-size:\s*(\d+(?:\.\d+)?)px/);
-  return match ? Math.round(parseFloat(match[1])) : null;
+  return match ? sanitizeFontSize(parseFloat(match[1])) : null;
 }
 
 /**
@@ -372,14 +399,38 @@ function parseTextAlignFromStyle(style: string): Align | null {
  */
 function parseFontColorFromStyle(style: string): string | null {
   const match = style.match(/(?:^|;)\s*color:\s*([^;]+)/);
-  if (!match) return null;
-  const color = match[1].trim();
-  if (/[;{}]|<|url\(|expression/i.test(color)) return null;
-  if (/^#[0-9a-f]{3,8}$/i.test(color)) return color;
-  if (/^rgba?\(/i.test(color)) return color;
-  if (/^hsla?\(/i.test(color)) return color;
+  return match ? sanitizeFontColor(match[1]) : null;
+}
+
+function sanitizeFontSize(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? Math.round(value)
+    : null;
+}
+
+/** Accept only inert CSS color tokens; serialized values may come from untyped JSON. */
+function sanitizeFontColor(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const color = value.trim();
+  if (/^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(color)) return color;
   if (/^[a-z]+$/i.test(color)) return color;
+  if (/^rgba?\([\d\s.,%+\/-]+\)$/i.test(color)) return color;
+  if (/^hsla?\([\d\s.,%+\/-]*(?:deg|grad|rad|turn)?[\d\s.,%+\/-]*\)$/i.test(color)) return color;
   return null;
+}
+
+function sanitizeAlign(value: unknown): Align | null {
+  return value === 'left' || value === 'center' || value === 'right' || value === 'justify'
+    ? value
+    : null;
+}
+
+function sanitizeImageAlign(value: unknown): 'left' | 'center' | 'right' | null {
+  return value === 'left' || value === 'center' || value === 'right' ? value : null;
+}
+
+function sanitizeDimension(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
 }
 
 function escapeHtml(str: string): string {
@@ -389,6 +440,11 @@ function escapeHtml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
+}
+
+function sanitizeLanguage(language: string | undefined): string | undefined {
+  const value = language?.trim();
+  return value && /^[a-zA-Z0-9_+-]+$/.test(value) ? value : undefined;
 }
 
 // ---------------------------------------------------------------------------

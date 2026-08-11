@@ -19,8 +19,10 @@ export type ContextMenuCommand = SlashCommand | TableContextCommand;
 export interface SlashMenuProps {
   /** Whether the menu is open */
   open: boolean;
-  /** Current search text (after the /) */
+  /** Current command search text */
   search: string;
+  /** Called when the command search text changes */
+  onSearchChange?: (search: string) => void;
   /** Position relative to .rte-root */
   anchorPos: { top: number; left: number };
   /** Whether the cursor is inside a table (shows table actions at top) */
@@ -42,6 +44,7 @@ export interface SlashMenuProps {
 export function SlashMenu({
   open,
   search,
+  onSearchChange,
   anchorPos,
   inTable = false,
   customCommands,
@@ -50,36 +53,79 @@ export function SlashMenu({
   onClose,
 }: SlashMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showVarSub, setShowVarSub] = useState(false);
-
-  const filtered = useMemo(() => filterCommands(search), [search]);
-  const customFiltered = useMemo(
-    () => filterCustomCommands(customCommands, search),
-    [customCommands, search]
+  const [variableIndex, setVariableIndex] = useState(0);
+  const [query, setQuery] = useState(search);
+  const variableOptions = useMemo(
+    () => variables ?? ['name', 'email', 'company', 'date', 'phone', 'address'],
+    [variables]
   );
+
+  useEffect(() => setQuery(search), [open, search]);
+
+  const filtered = useMemo(() => filterCommands(query), [query]);
+  const customFiltered = useMemo(
+    () => filterCustomCommands(customCommands, query),
+    [customCommands, query]
+  );
+  const tableFiltered = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return TABLE_CONTEXT_COMMANDS;
+    return TABLE_CONTEXT_COMMANDS.filter((command) =>
+      command.label.toLowerCase().includes(normalized)
+    );
+  }, [query]);
   const allFiltered = useMemo<SlashCommand[]>(
     () => [...filtered, ...customFiltered],
     [filtered, customFiltered]
   );
+  const grouped = useMemo(() => groupCommands(allFiltered), [allFiltered]);
   const flatList = useMemo<ContextMenuCommand[]>(
-    () => (inTable ? [...TABLE_CONTEXT_COMMANDS, ...allFiltered] : allFiltered),
-    [inTable, allFiltered]
+    () => {
+      const renderedCommands = Array.from(grouped.values()).flat();
+      return inTable ? [...tableFiltered, ...renderedCommands] : renderedCommands;
+    },
+    [inTable, grouped, tableFiltered]
   );
 
   // Reset active index when list changes
   useEffect(() => {
     setActiveIndex(0);
     setShowVarSub(false);
-  }, [search, inTable]);
+  }, [open, query, inTable]);
+
+  useEffect(() => {
+    if (!open || showVarSub) return;
+    const timer = setTimeout(() => searchInputRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, [open, showVarSub]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setQuery(value);
+      onSearchChange?.(value);
+    },
+    [onSearchChange]
+  );
 
   const handleSelect = useCallback(
     (cmd: ContextMenuCommand) => {
       if (cmd.action.type === 'variable') {
+        setVariableIndex(0);
         setShowVarSub(true);
         return;
       }
       onSelect(cmd);
+    },
+    [onSelect]
+  );
+
+  const handleVariableSelect = useCallback(
+    (name: string) => {
+      const cmd = SLASH_COMMANDS.find((c) => c.id === 'variable')!;
+      onSelect(cmd, name);
     },
     [onSelect]
   );
@@ -111,18 +157,39 @@ export function SlashMenu({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showVarSub) {
-        // Variable sub-menu navigation handled separately
+        switch (e.key) {
+          case 'ArrowDown':
+            e.preventDefault();
+            if (variableOptions.length) setVariableIndex((prev) => (prev + 1) % variableOptions.length);
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            if (variableOptions.length) setVariableIndex((prev) => (prev - 1 + variableOptions.length) % variableOptions.length);
+            break;
+          case 'Enter':
+            e.preventDefault();
+            if (variableOptions[variableIndex]) {
+              const variableCommand = SLASH_COMMANDS.find((command) => command.id === 'variable');
+              if (variableCommand) onSelect(variableCommand, variableOptions[variableIndex]);
+            }
+            break;
+          case 'ArrowLeft':
+          case 'Escape':
+            e.preventDefault();
+            setShowVarSub(false);
+            break;
+        }
         return;
       }
 
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setActiveIndex((prev) => (prev + 1) % flatList.length);
+          if (flatList.length) setActiveIndex((prev) => (prev + 1) % flatList.length);
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setActiveIndex((prev) => (prev - 1 + flatList.length) % flatList.length);
+          if (flatList.length) setActiveIndex((prev) => (prev - 1 + flatList.length) % flatList.length);
           break;
         case 'Enter':
           e.preventDefault();
@@ -139,7 +206,7 @@ export function SlashMenu({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, flatList, activeIndex, showVarSub, onClose, handleSelect]);
+  }, [open, flatList, activeIndex, showVarSub, variableIndex, variableOptions, onClose, onSelect, handleSelect]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -175,148 +242,177 @@ export function SlashMenu({
     menu.style.left = `${left}px`;
   }, [open, anchorPos, flatList.length]);
 
-  const handleVariableSelect = useCallback(
-    (name: string) => {
-      const cmd = SLASH_COMMANDS.find((c) => c.id === 'variable')!;
-      onSelect(cmd, name);
-    },
-    [onSelect]
-  );
-
-  if (!open || flatList.length === 0) return null;
-
-  // Group built-in + custom commands by category (table commands rendered separately when inTable)
-  const grouped = new Map<string, SlashCommand[]>();
-  for (const cmd of allFiltered) {
-    const list = grouped.get(cmd.category) ?? [];
-    list.push(cmd);
-    grouped.set(cmd.category, list);
-  }
+  if (!open) return null;
 
   // Flat index for keyboard nav (matches flatList order)
   let flatIndex = 0;
 
   return (
-    <div ref={menuRef} className="rte-slash-menu" role="listbox">
-      {showVarSub ? (
-        // Variable sub-menu
-        <div className="rte-slash-section">
-          <div className="rte-slash-category">Select Variable</div>
-          {(variables ?? ['name', 'email', 'company', 'date', 'phone', 'address']).map((v) => (
+    <div ref={menuRef} className="rte-slash-menu">
+      {!showVarSub && (
+        <div className="rte-slash-search">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            ref={searchInputRef}
+            type="search"
+            className="rte-slash-search-input"
+            aria-label="Search context menu"
+            placeholder="Search commands..."
+            value={query}
+            onChange={(event) => handleSearchChange(event.target.value)}
+          />
+          {query && (
             <button
-              key={v}
-              className="rte-slash-item"
-              role="option"
+              type="button"
+              className="rte-slash-search-clear"
+              aria-label="Clear context menu search"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => handleSearchChange('')}
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+      <div className="rte-slash-results" role="listbox" aria-label="Context menu commands">
+        {showVarSub ? (
+          // Variable sub-menu
+          <div className="rte-slash-section">
+            <div className="rte-slash-category">Select Variable</div>
+            {variableOptions.map((v, index) => (
+              <button
+                key={v}
+                className={`rte-slash-item${index === variableIndex ? ' rte-slash-item--active' : ''}`}
+                role="option"
+                aria-selected={index === variableIndex}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                onClick={() => handleVariableSelect(v)}
+                onMouseEnter={() => setVariableIndex(index)}
+              >
+                <span className="rte-slash-item-icon">
+                  <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                    <path d="M12 8v8" />
+                  </svg>
+                </span>
+                <span className="rte-slash-item-content">
+                  <span className="rte-slash-item-label">{`{{${v}}}`}</span>
+                </span>
+              </button>
+            ))}
+            <button
+              className="rte-slash-item rte-slash-item--back"
               onMouseDown={(e) => {
                 e.preventDefault();
-                handleVariableSelect(v);
               }}
+              onClick={() => setShowVarSub(false)}
             >
               <span className="rte-slash-item-icon">
                 <svg viewBox="0 0 24 24" width="18" height="18">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                  <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                  <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                  <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                  <path d="M12 8v8" />
+                  <polyline points="15 18 9 12 15 6" />
                 </svg>
               </span>
               <span className="rte-slash-item-content">
-                <span className="rte-slash-item-label">{`{{${v}}}`}</span>
+                <span className="rte-slash-item-label">Back</span>
               </span>
             </button>
-          ))}
-          <button
-            className="rte-slash-item rte-slash-item--back"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setShowVarSub(false);
-            }}
-          >
-            <span className="rte-slash-item-icon">
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </span>
-            <span className="rte-slash-item-content">
-              <span className="rte-slash-item-label">Back</span>
-            </span>
-          </button>
-        </div>
-      ) : (
-        // Main command list: Table section (when inTable) + grouped slash commands
-        <>
-          {inTable && (
-            <div className="rte-slash-section">
-              <div className="rte-slash-category">Table</div>
-              {TABLE_CONTEXT_COMMANDS.map((cmd) => {
-                const idx = flatIndex++;
-                const isActive = idx === activeIndex;
-                return (
-                  <button
-                    key={cmd.id}
-                    className={`rte-slash-item${isActive ? ' rte-slash-item--active' : ''}`}
-                    role="option"
-                    aria-selected={isActive}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleSelect(cmd);
-                    }}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    <span className="rte-slash-item-icon">
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        dangerouslySetInnerHTML={{ __html: cmd.iconPaths }}
-                      />
-                    </span>
-                    <span className="rte-slash-item-content">
-                      <span className="rte-slash-item-label">{cmd.label}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {Array.from(grouped.entries()).map(([category, cmds]) => (
-            <div key={category} className="rte-slash-section">
-              <div className="rte-slash-category">{CATEGORY_LABELS[category] ?? category}</div>
-              {cmds.map((cmd) => {
-                const idx = flatIndex++;
-                const isActive = idx === activeIndex;
-                return (
-                  <button
-                    key={cmd.id}
-                    className={`rte-slash-item${isActive ? ' rte-slash-item--active' : ''}`}
-                    role="option"
-                    aria-selected={isActive}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleSelect(cmd);
-                    }}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    <span className="rte-slash-item-icon">
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        dangerouslySetInnerHTML={{ __html: cmd.iconPaths }}
-                      />
-                    </span>
-                    <span className="rte-slash-item-content">
-                      <span className="rte-slash-item-label">{cmd.label}</span>
-                      <span className="rte-slash-item-desc">{cmd.description}</span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </>
-      )}
+          </div>
+        ) : (
+          // Main command list: Table section (when inTable) + grouped slash commands
+          <>
+            {inTable && tableFiltered.length > 0 && (
+              <div className="rte-slash-section">
+                <div className="rte-slash-category">Table</div>
+                {tableFiltered.map((cmd) => {
+                  const idx = flatIndex++;
+                  const isActive = idx === activeIndex;
+                  return (
+                    <button
+                      key={cmd.id}
+                      className={`rte-slash-item${isActive ? ' rte-slash-item--active' : ''}`}
+                      role="option"
+                      aria-selected={isActive}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                      }}
+                      onClick={() => handleSelect(cmd)}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                    >
+                      <span className="rte-slash-item-icon">
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="18"
+                          height="18"
+                          dangerouslySetInnerHTML={{ __html: cmd.iconPaths }}
+                        />
+                      </span>
+                      <span className="rte-slash-item-content">
+                        <span className="rte-slash-item-label">{cmd.label}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {Array.from(grouped.entries()).map(([category, cmds]) => (
+              <div key={category} className="rte-slash-section">
+                <div className="rte-slash-category">{CATEGORY_LABELS[category] ?? category}</div>
+                {cmds.map((cmd) => {
+                  const idx = flatIndex++;
+                  const isActive = idx === activeIndex;
+                  return (
+                    <button
+                      key={cmd.id}
+                      className={`rte-slash-item${isActive ? ' rte-slash-item--active' : ''}`}
+                      role="option"
+                      aria-selected={isActive}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                      }}
+                      onClick={() => handleSelect(cmd)}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                    >
+                      <span className="rte-slash-item-icon">
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="18"
+                          height="18"
+                          dangerouslySetInnerHTML={{ __html: cmd.iconPaths }}
+                        />
+                      </span>
+                      <span className="rte-slash-item-content">
+                        <span className="rte-slash-item-label">{cmd.label}</span>
+                        <span className="rte-slash-item-desc">{cmd.description}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+            {flatList.length === 0 && (
+              <div className="rte-slash-empty">No commands found</div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
+}
+
+function groupCommands(commands: SlashCommand[]): Map<string, SlashCommand[]> {
+  const grouped = new Map<string, SlashCommand[]>();
+  for (const command of commands) {
+    const group = grouped.get(command.category) ?? [];
+    group.push(command);
+    grouped.set(command.category, group);
+  }
+  return grouped;
 }

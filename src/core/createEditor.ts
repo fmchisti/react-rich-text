@@ -4,6 +4,7 @@ import { withHistory } from 'slate-history';
 import { withInlines } from './plugins/withInlines';
 import { withImages } from './plugins/withImages';
 import { withLinks } from './plugins/withLinks';
+import { withLists } from './plugins/withLists';
 import { withShortcuts } from './plugins/withShortcuts';
 import { withVariables } from './plugins/withVariables';
 import type { EditorPlugin, RichTextEditor } from './types';
@@ -19,7 +20,8 @@ import type { EditorPlugin, RichTextEditor } from './types';
  * 5. withLinks     - Auto-link detection on paste/type
  * 6. withVariables - Inline variable elements + {{...}} auto-detection
  * 7. withShortcuts - Markdown-style shortcuts
- * 8. ...userPlugins - Any additional user-supplied plugins
+ * 8. withLists     - Enter behavior for list items
+ * 9. ...userPlugins - Any additional user-supplied plugins
  *
  * @param plugins - Additional editor plugins to apply after built-ins
  * @returns A configured Slate editor instance
@@ -27,13 +29,15 @@ import type { EditorPlugin, RichTextEditor } from './types';
 export function createRichTextEditor(
   plugins: EditorPlugin[] = []
 ): RichTextEditor {
-  let editor = withShortcuts(
-    withVariables(
-      withLinks(
-        withImages(
-          withInlines(
-            withHistory(
-              withReact(slateCreateEditor())
+  let editor = withLists(
+    withShortcuts(
+      withVariables(
+        withLinks(
+          withImages(
+            withInlines(
+              withHistory(
+                withReact(slateCreateEditor())
+              )
             )
           )
         )

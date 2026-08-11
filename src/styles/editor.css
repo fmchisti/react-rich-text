@@ -280,6 +280,29 @@
   box-shadow: 0 0 0 2px var(--rte-focus-ring-color, #3b82f6);
 }
 
+.rte-variable--resolved {
+  white-space: pre-wrap;
+}
+
+.rte-variable--image {
+  max-width: 100%;
+  padding: 4px;
+  line-height: 0;
+  vertical-align: middle;
+}
+
+.rte-variable-image {
+  display: block;
+  max-width: min(240px, 100%);
+  max-height: 96px;
+  object-fit: contain;
+  user-select: none;
+}
+
+.rte-variable-value:empty::after {
+  content: '\200b';
+}
+
 .rte-variable-brace {
   opacity: 0.5;
   font-weight: 400;

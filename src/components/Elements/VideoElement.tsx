@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSelected, useFocused, type RenderElementProps } from 'slate-react';
 import type { VideoElement as VideoElementType } from '../../core/types';
-import { VIDEO_PROVIDERS } from '../../core/utils/video';
+import { parseVideoUrl, VIDEO_PROVIDERS } from '../../core/utils/video';
 
 /**
  * Renders a video embed as a responsive iframe (YouTube, Vimeo, etc.)
@@ -14,14 +14,18 @@ export function VideoElement({ attributes, children, element }: RenderElementPro
   const selected = useSelected();
   const focused = useFocused();
   const isHighlighted = selected && focused;
+  const parsedVideo = parseVideoUrl(el.url);
+  const trustedVideo = parsedVideo?.provider === el.provider ? parsedVideo : null;
 
   return (
     <div {...attributes}>
       <div contentEditable={false}>
         <div className={`rte-video-wrapper${isHighlighted ? ' rte-video--selected' : ''}`}>
-          {el.provider === 'direct' ? (
+          {!trustedVideo ? (
+            <div className="rte-video-invalid">Unsupported video</div>
+          ) : trustedVideo.provider === 'direct' ? (
             <video
-              src={el.embedUrl}
+              src={trustedVideo.embedUrl}
               controls
               className="rte-video-player"
               preload="metadata"
@@ -31,8 +35,8 @@ export function VideoElement({ attributes, children, element }: RenderElementPro
           ) : (
             <div className="rte-video-embed">
               <iframe
-                src={el.embedUrl}
-                title={`${VIDEO_PROVIDERS[el.provider]} video`}
+                src={trustedVideo.embedUrl}
+                title={`${VIDEO_PROVIDERS[trustedVideo.provider]} video`}
                 className="rte-video-iframe"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

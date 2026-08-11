@@ -79,7 +79,7 @@ describe('htmlSerializer.serialize', () => {
       },
     ];
     const html = htmlSerializer.serialize(value);
-    expect(html).toContain('href="https://example.com"');
+    expect(html).toContain('href="https://example.com/"');
     expect(html).toContain('click me');
   });
 
@@ -90,6 +90,41 @@ describe('htmlSerializer.serialize', () => {
     const html = htmlSerializer.serialize(value);
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('rejects unsafe links', () => {
+    const html = htmlSerializer.serialize([{
+      type: 'paragraph',
+      children: [{
+        type: 'link',
+        url: 'javascript:alert(1)',
+        children: [{ text: 'safe label' }],
+      } as any],
+    }]);
+    expect(html).toBe('<p>safe label</p>');
+  });
+
+  it('does not interpolate unsafe code languages into attributes', () => {
+    const html = htmlSerializer.serialize([{
+      type: 'code-block',
+      language: 'js"><img src=x onerror=alert(1)>',
+      children: [{ text: 'code' }],
+    }]);
+    expect(html).toBe('<pre><code>code</code></pre>');
+  });
+
+  it('does not interpolate untrusted font colors into style attributes', () => {
+    const html = htmlSerializer.serialize([{
+      type: 'paragraph',
+      children: [{
+        text: 'safe text',
+        fontColor: 'red\"><img src=x onerror=alert(1)>',
+      } as any],
+    }]);
+
+    expect(html).toBe('<p>safe text</p>');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('onerror');
   });
 });
 
@@ -118,6 +153,16 @@ describe('htmlSerializer.deserialize', () => {
     const result = htmlSerializer.deserialize('');
     expect(result).toHaveLength(1);
     expect((result[0] as any).type).toBe('paragraph');
+  });
+
+  it('preserves a valid code language', () => {
+    const result = htmlSerializer.deserialize('<pre><code class="language-typescript">const x = 1;</code></pre>');
+    expect((result[0] as any).language).toBe('typescript');
+  });
+
+  it('flattens unsafe deserialized links to text', () => {
+    const result = htmlSerializer.deserialize('<p><a href="javascript:alert(1)">safe label</a></p>');
+    expect((result[0] as any).children).toEqual([{ text: 'safe label' }]);
   });
 });
 
@@ -216,6 +261,13 @@ describe('htmlSerializer fontColor support', () => {
     expect(textNode.fontSize).toBe(20);
     expect(textNode.fontColor).toBe('blue');
   });
+
+  it('rejects malformed functional color values', () => {
+    const result = htmlSerializer.deserialize(
+      '<p><span style="color:rgb(1, 2, 3) trailing">text</span></p>'
+    );
+    expect((result[0] as any).children).toEqual([{ text: 'text' }]);
+  });
 });
 
 describe('htmlSerializer video support', () => {
@@ -232,6 +284,7 @@ describe('htmlSerializer video support', () => {
     const html = htmlSerializer.serialize(value);
     expect(html).toContain('data-video-provider="youtube"');
     expect(html).toContain('iframe');
+    expect(html).toContain('title="Embedded video"');
     expect(html).toContain('youtube-nocookie.com/embed/dQw4w9WgXcQ');
   });
 
@@ -264,14 +317,33 @@ describe('htmlSerializer video support', () => {
     ];
     const html = htmlSerializer.serialize(value);
     expect(html).toContain('My cool video');
+    expect(html).toContain('title="My cool video"');
+  });
+
+  it('uses an accessible title when the caption is empty', () => {
+    const value: Descendant[] = [{
+      type: 'video',
+      url: 'https://youtu.be/dQw4w9WgXcQ',
+      embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+      provider: 'youtube',
+      caption: '',
+      children: [{ text: '' }],
+    } as any];
+    expect(htmlSerializer.serialize(value)).toContain('title="Embedded video"');
   });
 
   it('deserializes video HTML back to a video element', () => {
-    const html = '<div data-video-provider="youtube" data-video-url="https://youtube.com/watch?v=abc"><iframe src="https://www.youtube-nocookie.com/embed/abc"></iframe></div>';
+    const html = '<div data-video-provider="youtube" data-video-url="https://youtube.com/watch?v=dQw4w9WgXcQ"><iframe src="https://attacker.example/embed"></iframe></div>';
     const result = htmlSerializer.deserialize(html);
     const video = result[0] as any;
     expect(video.type).toBe('video');
     expect(video.provider).toBe('youtube');
-    expect(video.embedUrl).toContain('abc');
+    expect(video.embedUrl).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+  });
+
+  it('does not deserialize arbitrary iframes as trusted videos', () => {
+    const html = '<div data-video-provider="youtube" data-video-url="https://attacker.example/video"><iframe src="https://attacker.example/embed"></iframe></div>';
+    const result = htmlSerializer.deserialize(html);
+    expect(result.some((node: any) => node.type === 'video')).toBe(false);
   });
 });

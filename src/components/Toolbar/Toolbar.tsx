@@ -57,11 +57,11 @@ const MARK_ICONS: Record<MarkType, React.ReactNode> = {
 };
 
 const MARK_LABELS: Record<MarkType, string> = {
-  bold: 'Bold (Ctrl+B)',
-  italic: 'Italic (Ctrl+I)',
-  underline: 'Underline (Ctrl+U)',
-  strikethrough: 'Strikethrough (Ctrl+Shift+S)',
-  code: 'Inline Code (Ctrl+E)',
+  bold: 'Bold (Ctrl/⌘+B)',
+  italic: 'Italic (Ctrl/⌘+I)',
+  underline: 'Underline (Ctrl/⌘+U)',
+  strikethrough: 'Strikethrough (Ctrl/⌘+Shift+S)',
+  code: 'Inline Code (Ctrl/⌘+E)',
 };
 
 const BLOCK_ICONS: Partial<Record<BlockType, React.ReactNode>> = {
@@ -218,7 +218,7 @@ export function Toolbar({
             key={`mark-${item.mark}-${index}`}
             active={isMarkActive(editor, item.mark)}
             title={item.tooltip ?? MARK_LABELS[item.mark]}
-            onMouseDown={() => toggleMark(editor, item.mark)}
+            onClick={() => toggleMark(editor, item.mark)}
           >
             {item.icon ?? MARK_ICONS[item.mark]}
           </ToolbarButton>
@@ -230,7 +230,7 @@ export function Toolbar({
             key={`block-${item.block}-${index}`}
             active={isBlockActive(editor, item.block)}
             title={item.tooltip ?? BLOCK_LABELS[item.block]}
-            onMouseDown={() => toggleBlock(editor, item.block)}
+            onClick={() => toggleBlock(editor, item.block)}
           >
             {item.icon ?? BLOCK_ICONS[item.block]}
           </ToolbarButton>
@@ -253,7 +253,7 @@ export function Toolbar({
             key={`link-${index}`}
             active={isLinkActive(editor)}
             title="Link"
-            onMouseDown={(e) => onLinkClick?.(e)}
+            onClick={(e) => onLinkClick?.(e)}
           >
             <LinkIcon />
           </ToolbarButton>
@@ -264,7 +264,7 @@ export function Toolbar({
           <ToolbarButton
             key={`image-${index}`}
             title="Insert Image"
-            onMouseDown={(e) => onImageClick?.(e)}
+            onClick={(e) => onImageClick?.(e)}
           >
             <ImageIcon />
           </ToolbarButton>
@@ -275,7 +275,7 @@ export function Toolbar({
           <ToolbarButton
             key={`video-${index}`}
             title="Insert Video"
-            onMouseDown={(e) => onVideoClick?.(e)}
+            onClick={(e) => onVideoClick?.(e)}
           >
             <VideoIcon />
           </ToolbarButton>
@@ -286,7 +286,7 @@ export function Toolbar({
           <ToolbarButton
             key={`table-${index}`}
             title={item.tooltip ?? 'Insert Table'}
-            onMouseDown={(e) => (onTableClick ? onTableClick(e) : insertTable(editor))}
+            onClick={onTableClick ? (e) => onTableClick(e) : () => insertTable(editor)}
           >
             {item.icon ?? <TableIcon />}
           </ToolbarButton>
@@ -296,8 +296,8 @@ export function Toolbar({
         return (
           <React.Fragment key={`font-size-${index}`}>
             <ToolbarButton
-              title="Decrease Font Size (Ctrl+Shift+,)"
-              onMouseDown={() => decreaseFontSize(editor)}
+              title="Decrease Font Size (Ctrl/⌘+Shift+,)"
+              onClick={() => decreaseFontSize(editor)}
             >
               <FontSizeDecreaseIcon />
             </ToolbarButton>
@@ -308,8 +308,8 @@ export function Toolbar({
               options={FONT_SIZE_OPTIONS}
             />
             <ToolbarButton
-              title="Increase Font Size (Ctrl+Shift+.)"
-              onMouseDown={() => increaseFontSize(editor)}
+              title="Increase Font Size (Ctrl/⌘+Shift+.)"
+              onClick={() => increaseFontSize(editor)}
             >
               <FontSizeIncreaseIcon />
             </ToolbarButton>
@@ -322,7 +322,7 @@ export function Toolbar({
             key={`align-${item.align}-${index}`}
             active={getBlockAlign(editor) === item.align}
             title={item.tooltip ?? ALIGN_LABELS[item.align]}
-            onMouseDown={() => setBlockAlign(editor, item.align)}
+            onClick={() => setBlockAlign(editor, item.align)}
           >
             {item.icon ?? ALIGN_ICONS[item.align]}
           </ToolbarButton>
@@ -362,14 +362,14 @@ export function Toolbar({
       {/* Undo / Redo */}
       <div className="rte-toolbar-group">
         <ToolbarButton
-          title="Undo (Ctrl+Z)"
-          onMouseDown={() => HistoryEditor.undo(editor as any)}
+          title="Undo (Ctrl/⌘+Z)"
+          onClick={() => HistoryEditor.undo(editor as any)}
         >
           <UndoIcon />
         </ToolbarButton>
         <ToolbarButton
-          title="Redo (Ctrl+Y)"
-          onMouseDown={() => HistoryEditor.redo(editor as any)}
+          title="Redo (Ctrl+Y / ⌘+Shift+Z)"
+          onClick={() => HistoryEditor.redo(editor as any)}
         >
           <RedoIcon />
         </ToolbarButton>

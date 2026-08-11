@@ -54,7 +54,122 @@ describe('markdownSerializer.serialize', () => {
         ],
       },
     ];
-    expect(markdownSerializer.serialize(value)).toContain('[link](https://example.com)');
+    expect(markdownSerializer.serialize(value)).toContain('[link](https://example.com/)');
+  });
+
+  it('does not add empty quoted lines after a blockquote', () => {
+    const value: Descendant[] = [
+      {
+        type: 'blockquote',
+        children: [{ type: 'paragraph', children: [{ text: 'Some quote' }] }],
+      },
+    ];
+
+    expect(markdownSerializer.serialize(value)).toBe('> Some quote');
+  });
+
+  it('serializes video embeds as valid text links', () => {
+    const value: Descendant[] = [
+      {
+        type: 'video',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+        provider: 'youtube',
+        caption: 'Demo video',
+        children: [{ text: '' }],
+      } as any,
+    ];
+
+    const markdown = markdownSerializer.serialize(value);
+    expect(markdown).toBe('[Demo video](https://www.youtube.com/watch?v=dQw4w9WgXcQ)');
+    expect(markdown).not.toContain('![Video]');
+    expect(markdown).not.toContain('/embed/');
+  });
+
+  it('uses an accessible label when a video caption is empty', () => {
+    const value: Descendant[] = [{
+      type: 'video',
+      url: 'https://youtu.be/dQw4w9WgXcQ',
+      embedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+      provider: 'youtube',
+      caption: '',
+      children: [{ text: '' }],
+    } as any];
+    expect(markdownSerializer.serialize(value)).toBe('[Video](https://youtu.be/dQw4w9WgXcQ)');
+  });
+
+  it('escapes literal Markdown without changing it on round-trip', () => {
+    const original = '**plain** and [not a link]';
+    const markdown = markdownSerializer.serialize([
+      { type: 'paragraph', children: [{ text: original }] },
+    ]);
+    const result = markdownSerializer.deserialize(markdown);
+    expect((result[0] as any).children).toEqual([{ text: original }]);
+  });
+
+  it('round-trips inline code containing backticks', () => {
+    const markdown = markdownSerializer.serialize([{
+      type: 'paragraph',
+      children: [{ text: 'a ` b', code: true }],
+    }]);
+    expect(markdown).toBe('``a ` b``');
+    expect((markdownSerializer.deserialize(markdown)[0] as any).children).toEqual([
+      { text: 'a ` b', code: true },
+    ]);
+  });
+
+  it('round-trips combined bold and italic marks', () => {
+    const markdown = markdownSerializer.serialize([{
+      type: 'paragraph',
+      children: [{ text: 'both', bold: true, italic: true }],
+    }]);
+    expect(markdown).toBe('***both***');
+    expect((markdownSerializer.deserialize(markdown)[0] as any).children).toEqual([
+      { text: 'both', bold: true, italic: true },
+    ]);
+  });
+
+  it('round-trips literal angle brackets', () => {
+    const markdown = markdownSerializer.serialize([{
+      type: 'paragraph',
+      children: [{ text: '<tag>' }],
+    }]);
+    expect((markdownSerializer.deserialize(markdown)[0] as any).children).toEqual([
+      { text: '<tag>' },
+    ]);
+  });
+
+  it('round-trips image alt text containing a closing bracket', () => {
+    const markdown = markdownSerializer.serialize([{
+      type: 'image',
+      url: 'https://example.com/image.png',
+      alt: 'a]b',
+      children: [{ text: '' }],
+    } as any]);
+    const image = markdownSerializer.deserialize(markdown)[0] as any;
+    expect(image.type).toBe('image');
+    expect(image.alt).toBe('a]b');
+    expect(image.url).toBe('https://example.com/image.png');
+  });
+
+  it('escapes paragraph text that resembles a list', () => {
+    const markdown = markdownSerializer.serialize([
+      { type: 'paragraph', children: [{ text: '- plain text' }] },
+    ]);
+    expect(markdown).toBe('\\- plain text');
+    expect((markdownSerializer.deserialize(markdown)[0] as any).type).toBe('paragraph');
+  });
+
+  it('drops unsafe link destinations', () => {
+    const markdown = markdownSerializer.serialize([{
+      type: 'paragraph',
+      children: [{
+        type: 'link',
+        url: 'javascript:alert(1)',
+        children: [{ text: 'safe label' }],
+      } as any],
+    }]);
+    expect(markdown).toBe('safe label');
   });
 });
 

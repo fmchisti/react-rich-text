@@ -178,7 +178,7 @@ const INITIAL_VALUE: Descendant[] = [
       { text: "toolbar buttons", bold: true },
       { text: " above, or use " },
       { text: "keyboard shortcuts", code: true },
-      { text: " like Ctrl+B for bold and Ctrl+I for italic!" },
+      { text: " like Ctrl/⌘+B for bold and Ctrl/⌘+I for italic!" },
     ],
   },
 ];
@@ -223,13 +223,31 @@ export default function App() {
         <p style={styles.subtitle}>
           Advanced, open-source, 100% customizable rich text editor for React
         </p>
+        <nav aria-label="Project links" style={styles.projectLinks}>
+          <a
+            href="https://www.npmjs.com/package/fc-react-rich-editor"
+            target="_blank"
+            rel="noreferrer"
+            style={styles.projectLink}
+          >
+            npm package
+          </a>
+          <a
+            href="https://github.com/fmchisti/react-rich-text"
+            target="_blank"
+            rel="noreferrer"
+            style={styles.projectLink}
+          >
+            GitHub repository
+          </a>
+        </nav>
       </header>
 
       <main style={styles.main}>
         <section style={styles.editorSection}>
           <RichTextEditor
             value={value}
-            toolbar={false}
+            toolbar
             onChange={handleChange}
             placeholder='Start writing something amazing...'
             autoFocus
@@ -295,6 +313,17 @@ export default function App() {
 
       <footer style={styles.footer}>
         <p>MIT License | Built with Slate.js + React + TypeScript</p>
+        <p>
+          Created by{' '}
+          <a
+            href="https://fahimcode.com"
+            target="_blank"
+            rel="noreferrer"
+            style={styles.footerLink}
+          >
+            fahimcode.com
+          </a>
+        </p>
       </footer>
     </div>
   );
@@ -323,9 +352,27 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#64748b",
     marginTop: "8px",
   },
+  projectLinks: {
+    display: "flex",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginTop: "16px",
+  },
+  projectLink: {
+    border: "1px solid #cbd5e1",
+    borderRadius: "999px",
+    padding: "7px 13px",
+    background: "#ffffff",
+    color: "#2563eb",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    textDecoration: "none",
+  },
   main: {
     flex: 1,
-    maxWidth: "840px",
+    boxSizing: "border-box",
+    maxWidth: "880px",
     width: "100%",
     margin: "0 auto",
     padding: "20px",
@@ -355,7 +402,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   outputBtnActive: {
     background: "#2563eb",
-    borderColor: "#2563eb",
+    border: "1px solid #2563eb",
     color: "white",
   },
   output: {
@@ -375,5 +422,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "24px",
     color: "#94a3b8",
     fontSize: "0.85rem",
+  },
+  footerLink: {
+    color: "#2563eb",
+    fontWeight: 600,
   },
 };

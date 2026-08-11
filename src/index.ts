@@ -17,6 +17,9 @@ export type {
   ImageAlign,
   ImageElement as ImageElementType,
   VariableElement as VariableElementType,
+  VariableImageValue,
+  VariableValue,
+  VariableValues,
   VideoElement as VideoElementType,
   VideoProvider,
   TableElement,
@@ -71,6 +74,7 @@ export {
 export { withInlines } from './core/plugins/withInlines';
 export { withImages, insertImage } from './core/plugins/withImages';
 export { withLinks, wrapLink, unwrapLink, insertLink, isLinkActive } from './core/plugins/withLinks';
+export { withLists } from './core/plugins/withLists';
 export { withShortcuts } from './core/plugins/withShortcuts';
 export { withVariables, insertVariable } from './core/plugins/withVariables';
 export { insertVideo } from './core/plugins/withVideos';

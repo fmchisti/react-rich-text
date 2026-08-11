@@ -276,6 +276,7 @@ export function HoveringToolbar({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const linkInputRef = useRef<HTMLInputElement>(null);
 
   // Determine full mode (when static toolbar is hidden)
@@ -336,6 +337,7 @@ export function HoveringToolbar({
     ) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
+      setIsVisible(false);
       return false;
     }
 
@@ -343,6 +345,7 @@ export function HoveringToolbar({
     if (!domSelection || domSelection.rangeCount === 0) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
+      setIsVisible(false);
       return false;
     }
 
@@ -352,6 +355,7 @@ export function HoveringToolbar({
     if (rect.width === 0 && rect.height === 0) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
+      setIsVisible(false);
       return false;
     }
 
@@ -363,6 +367,7 @@ export function HoveringToolbar({
     el.style.pointerEvents = 'auto';
     el.style.top = `${Math.max(4, top)}px`;
     el.style.left = `${Math.max(4, left)}px`;
+    setIsVisible(true);
     return true;
   }, [editor, selection]);
 
@@ -375,6 +380,10 @@ export function HoveringToolbar({
       setTimeout(updateScrollState, 0);
     }
   }, [selection, updateToolbarPosition, updateScrollState]);
+
+  useEffect(() => {
+    ref.current?.toggleAttribute('inert', !isVisible);
+  }, [isVisible]);
 
   useEffect(() => {
     const onScrollOrResize = () => updateToolbarPosition();
@@ -491,16 +500,15 @@ export function HoveringToolbar({
     icon: React.ReactNode,
     title: string,
     onClick: (e: React.MouseEvent) => void,
-    active = false
+    active?: boolean
   ) => (
     <button
       key={key}
       className={`rte-hovering-btn${active ? ' rte-hovering-btn--active' : ''}`}
+      aria-pressed={active}
       title={title}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        onClick(e);
-      }}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
     >
       {icon}
     </button>
@@ -511,11 +519,11 @@ export function HoveringToolbar({
     if (id === 'divider') return <HDivider key={`divider-${index}`} />;
     switch (id) {
       case 'bold':
-        return btn('bold', <HBoldIcon />, 'Bold (Ctrl+B)', () => toggleMark(editor, 'bold'), isMarkActive(editor, 'bold'));
+        return btn('bold', <HBoldIcon />, 'Bold (Ctrl/⌘+B)', () => toggleMark(editor, 'bold'), isMarkActive(editor, 'bold'));
       case 'italic':
-        return btn('italic', <HItalicIcon />, 'Italic (Ctrl+I)', () => toggleMark(editor, 'italic'), isMarkActive(editor, 'italic'));
+        return btn('italic', <HItalicIcon />, 'Italic (Ctrl/⌘+I)', () => toggleMark(editor, 'italic'), isMarkActive(editor, 'italic'));
       case 'underline':
-        return btn('underline', <HUnderlineIcon />, 'Underline (Ctrl+U)', () => toggleMark(editor, 'underline'), isMarkActive(editor, 'underline'));
+        return btn('underline', <HUnderlineIcon />, 'Underline (Ctrl/⌘+U)', () => toggleMark(editor, 'underline'), isMarkActive(editor, 'underline'));
       case 'strikethrough':
         return btn('strikethrough', <HStrikethroughIcon />, 'Strikethrough', () => toggleMark(editor, 'strikethrough'), isMarkActive(editor, 'strikethrough'));
       case 'code':
@@ -559,6 +567,10 @@ export function HoveringToolbar({
     <div
       ref={ref}
       className="rte-hovering-toolbar rte-hovering-toolbar--single-line"
+      role="toolbar"
+      aria-label="Formatting options"
+      aria-hidden={!isVisible}
+      style={{ visibility: isVisible ? 'visible' : 'hidden' }}
       onMouseDown={(e) => e.preventDefault()}
     >
       <div className="rte-hovering-toolbar-outer">
@@ -566,7 +578,7 @@ export function HoveringToolbar({
           type="button"
           className="rte-hovering-scroll-btn rte-hovering-scroll-btn--left"
           aria-label="Scroll left"
-          onMouseDown={handleScrollLeft}
+          onClick={handleScrollLeft}
           style={{ visibility: canScrollLeft ? 'visible' : 'hidden' }}
         >
           <svg viewBox="0 0 24 24" width="14" height="14"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -574,8 +586,6 @@ export function HoveringToolbar({
         <div
           ref={scrollRef}
           className="rte-hovering-toolbar-scroll"
-          role="region"
-          aria-label="Formatting options"
         >
           <div className="rte-hovering-toolbar-buttons">
             {orderedIds.map((id, index) => renderOrderedItem(id, index))}
@@ -585,7 +595,7 @@ export function HoveringToolbar({
           type="button"
           className="rte-hovering-scroll-btn rte-hovering-scroll-btn--right"
           aria-label="Scroll right"
-          onMouseDown={handleScrollRight}
+          onClick={handleScrollRight}
           style={{ visibility: canScrollRight ? 'visible' : 'hidden' }}
         >
           <svg viewBox="0 0 24 24" width="14" height="14"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -606,7 +616,7 @@ export function HoveringToolbar({
               if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl(''); }
             }}
           />
-          <button onMouseDown={(e) => { e.preventDefault(); handleLinkSubmit(); }}>
+          <button onMouseDown={(e) => e.preventDefault()} onClick={handleLinkSubmit}>
             Apply
           </button>
         </div>
@@ -618,7 +628,8 @@ export function HoveringToolbar({
           <button
             className="rte-hovering-color-swatch rte-hovering-color-swatch--remove"
             title="Remove color"
-            onMouseDown={(e) => { e.preventDefault(); handleColorSelect(null); }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => handleColorSelect(null)}
           >
             <svg viewBox="0 0 16 16" width="14" height="14">
               <line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" strokeWidth="2" />
@@ -631,7 +642,8 @@ export function HoveringToolbar({
               className={`rte-hovering-color-swatch${currentColor === color ? ' rte-hovering-color-swatch--selected' : ''}`}
               style={{ backgroundColor: color }}
               title={color}
-              onMouseDown={(e) => { e.preventDefault(); handleColorSelect(color); }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleColorSelect(color)}
             />
           ))}
         </div>

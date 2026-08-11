@@ -2,6 +2,10 @@
 
 A full-featured, customizable rich text editor for React with TypeScript support. Built on [Slate.js](https://docs.slatejs.org/).
 
+[Live demo](https://fmchisti.github.io/react-rich-text/) · [npm package](https://www.npmjs.com/package/fc-react-rich-editor) · [GitHub repository](https://github.com/fmchisti/react-rich-text)
+
+Created by [fahimcode.com](https://fahimcode.com).
+
 ## Features
 
 - **TypeScript-first** – Full type safety and Slate module augmentation
@@ -106,14 +110,29 @@ Use the video button and paste a URL. Supports YouTube, Vimeo, Dailymotion, Loom
 ### Variables
 
 Pass a list of variable names; users can insert them as chips (e.g. `{{name}}`, `{{email}}`).
+Use `variableValues` to preview live client data. A value can be text or an image, which is useful for dynamic signatures:
 
 ```tsx
 <RichTextEditor
   value={value}
   onChange={setValue}
-  variables={['name', 'email', 'company']}
+  variables={['name', 'email', 'company', 'client_signature']}
+  variableValues={{
+    name: client.name,
+    email: client.email,
+    client_signature: {
+      type: 'image',
+      src: client.signatureUrl, // HTTPS, blob, or data URL
+      alt: `${client.name}'s signature`,
+      width: 180,
+      height: 60,
+    },
+  }}
 />
 ```
+
+Runtime values only affect rendering. The document and serializers retain
+`{{client_signature}}`, so the same template can be reused with another client.
 
 ### Slash menu (context menu) and custom commands
 

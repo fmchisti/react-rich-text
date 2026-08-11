@@ -53,6 +53,26 @@ describe('toggleBlock', () => {
     expect(SlateElement.isElement(node) && 'level' in node && node.level).toBe(2);
   });
 
+  it('removes heading-only metadata when converting to a paragraph', () => {
+    const editor = makeEditor();
+    toggleBlock(editor, 'heading', 2);
+    toggleBlock(editor, 'paragraph');
+    expect(editor.children[0]).toEqual({
+      type: 'paragraph',
+      children: [{ text: 'hello world' }],
+    });
+  });
+
+  it('removes code-only metadata when converting to another block', () => {
+    const editor = makeEditor();
+    Transforms.setNodes(editor, { type: 'code-block', language: 'typescript' } as any);
+    toggleBlock(editor, 'blockquote');
+    expect(editor.children[0]).toEqual({
+      type: 'blockquote',
+      children: [{ text: 'hello world' }],
+    });
+  });
+
   it('wraps selection in bulleted list', () => {
     const editor = makeEditor();
     toggleBlock(editor, 'bulleted-list');

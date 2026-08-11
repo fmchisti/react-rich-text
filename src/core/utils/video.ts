@@ -1,4 +1,5 @@
 import type { VideoProvider } from '../types';
+import { normalizeHttpUrl } from './url';
 
 /**
  * Result of parsing a video URL.
@@ -29,74 +30,74 @@ export function parseVideoUrl(url: string): ParsedVideoUrl | null {
   if (!url || !url.trim()) return null;
 
   const trimmed = url.trim();
+  const parsedUrl = normalizeHttpUrl(trimmed);
+  if (!parsedUrl) return null;
+  const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
+  const parts = parsedUrl.pathname.split('/').filter(Boolean);
+
+  const result = (provider: VideoProvider, embedUrl: string): ParsedVideoUrl => ({
+    url: parsedUrl.toString(),
+    embedUrl,
+    provider,
+  });
 
   // ---- YouTube ----
-  const ytMatch = trimmed.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/
-  );
-  if (ytMatch) {
-    return {
-      url: trimmed,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}`,
-      provider: 'youtube',
-    };
+  if (host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+    const candidate = host === 'youtu.be'
+      ? parts[0]
+      : parsedUrl.searchParams.get('v') ??
+        (['embed', 'shorts', 'v'].includes(parts[0] ?? '') ? parts[1] : undefined);
+    if (candidate && /^[a-zA-Z0-9_-]{11}$/.test(candidate)) {
+      return result('youtube', `https://www.youtube-nocookie.com/embed/${candidate}`);
+    }
   }
 
   // ---- Vimeo ----
-  const vimeoMatch = trimmed.match(
-    /(?:vimeo\.com\/(?:video\/)?|player\.vimeo\.com\/video\/)(\d+)/
-  );
-  if (vimeoMatch) {
-    return {
-      url: trimmed,
-      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}`,
-      provider: 'vimeo',
-    };
+  if (host === 'vimeo.com' || host === 'player.vimeo.com') {
+    const candidate = parts[0] === 'video' ? parts[1] : parts[0];
+    if (candidate && /^\d+$/.test(candidate)) {
+      return result('vimeo', `https://player.vimeo.com/video/${candidate}`);
+    }
   }
 
   // ---- Dailymotion ----
-  const dmMatch = trimmed.match(
-    /(?:dailymotion\.com\/(?:video|embed\/video)\/|dai\.ly\/)([a-zA-Z0-9]+)/
-  );
-  if (dmMatch) {
-    return {
-      url: trimmed,
-      embedUrl: `https://www.dailymotion.com/embed/video/${dmMatch[1]}`,
-      provider: 'dailymotion',
-    };
+  if (host === 'dailymotion.com' || host === 'dai.ly') {
+    const rawCandidate = host === 'dai.ly'
+      ? parts[0]
+      : parts[0] === 'video'
+        ? parts[1]
+        : parts[0] === 'embed' && parts[1] === 'video'
+          ? parts[2]
+          : undefined;
+    const candidate = rawCandidate?.split('_', 1)[0];
+    if (candidate && /^[a-zA-Z0-9]+$/.test(candidate)) {
+      return result('dailymotion', `https://www.dailymotion.com/embed/video/${candidate}`);
+    }
   }
 
   // ---- Loom ----
-  const loomMatch = trimmed.match(
-    /loom\.com\/(?:share|embed)\/([a-zA-Z0-9]+)/
-  );
-  if (loomMatch) {
-    return {
-      url: trimmed,
-      embedUrl: `https://www.loom.com/embed/${loomMatch[1]}`,
-      provider: 'loom',
-    };
+  if (host === 'loom.com' && ['share', 'embed'].includes(parts[0] ?? '')) {
+    const candidate = parts[1];
+    if (candidate && /^[a-zA-Z0-9]+$/.test(candidate)) {
+      return result('loom', `https://www.loom.com/embed/${candidate}`);
+    }
   }
 
   // ---- Wistia ----
-  const wistiaMatch = trimmed.match(
-    /(?:wistia\.com\/medias|wi\.st\/medias|wistia\.com\/embed\/iframe)\/([a-zA-Z0-9]+)/
-  );
-  if (wistiaMatch) {
-    return {
-      url: trimmed,
-      embedUrl: `https://fast.wistia.net/embed/iframe/${wistiaMatch[1]}`,
-      provider: 'wistia',
-    };
+  if (host.endsWith('.wistia.com') || host === 'wistia.com' || host === 'wi.st') {
+    const candidate = parts[0] === 'medias'
+      ? parts[1]
+      : parts[0] === 'embed' && parts[1] === 'iframe'
+        ? parts[2]
+        : undefined;
+    if (candidate && /^[a-zA-Z0-9]+$/.test(candidate)) {
+      return result('wistia', `https://fast.wistia.net/embed/iframe/${candidate}`);
+    }
   }
 
   // ---- Direct video file ----
-  if (/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(trimmed)) {
-    return {
-      url: trimmed,
-      embedUrl: trimmed,
-      provider: 'direct',
-    };
+  if (/\.(mp4|webm|ogg|mov|m4v)$/i.test(parsedUrl.pathname)) {
+    return result('direct', parsedUrl.toString());
   }
 
   return null;

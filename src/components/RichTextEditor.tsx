@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Slate, Editable, ReactEditor, type RenderElementProps, type RenderLeafProps } from 'slate-react';
-import type { Descendant } from 'slate';
+import type { Descendant, Location } from 'slate';
 import { Range, Editor, Transforms, Element as SlateElement } from 'slate';
 import isHotkey from 'is-hotkey';
 
@@ -100,6 +100,7 @@ export function RichTextEditor({
   theme,
   toolbar = true,
   variables,
+  variableValues,
   hoveringToolbar = true,
   slashMenu: slashMenuProp = true,
   renderElement: userRenderElement,
@@ -148,7 +149,7 @@ export function RichTextEditor({
   const slashConfig: SlashMenuConfig | false = useMemo(() => {
     if (slashMenuProp === false) return false;
     if (slashMenuProp === true) return { enabled: true };
-    return slashMenuProp;
+    return slashMenuProp.enabled === false ? false : slashMenuProp;
   }, [slashMenuProp]);
 
   // ---- Context menu (right-click) state ----
@@ -156,6 +157,13 @@ export function RichTextEditor({
   const [ctxMenuSearch, setCtxMenuSearch] = useState('');
   const [ctxMenuAnchor, setCtxMenuAnchor] = useState<ModalAnchorPos>({ top: 0, left: 0 });
   const [ctxMenuInTable, setCtxMenuInTable] = useState(false);
+
+  useEffect(() => {
+    if (readOnly || slashConfig === false) {
+      setCtxMenuOpen(false);
+      setCtxMenuSearch('');
+    }
+  }, [readOnly, slashConfig]);
 
   /** Handle right-click on the editable area */
   const handleContextMenu = useCallback(
@@ -188,7 +196,6 @@ export function RichTextEditor({
   const [modalAnchor, setModalAnchor] = useState<ModalAnchorPos>({ top: 0, left: 0 });
   const savedSelectionRef = useRef<ReturnType<typeof cloneRange>>(null);
   const serializeGenRef = useRef(0);
-  const isInternalChangeRef = useRef(false);
 
   const saveSelection = useCallback(() => {
     savedSelectionRef.current = cloneRange(editor.selection);
@@ -352,11 +359,9 @@ export function RichTextEditor({
           }
           break;
         case 'modal':
-          setTimeout(() => {
-            if (action.modal === 'image') handleImageClick();
-            else if (action.modal === 'video') handleVideoClick();
-            else if (action.modal === 'link') handleLinkClick();
-          }, 0);
+          if (action.modal === 'image') handleImageClick();
+          else if (action.modal === 'video') handleVideoClick();
+          else if (action.modal === 'link') handleLinkClick();
           break;
         case 'variable':
           if (variableName) {
@@ -397,7 +402,12 @@ export function RichTextEditor({
         case 'link':
           return <LinkElement {...props} />;
         case 'variable':
-          return <VariableElement {...props} />;
+          return (
+            <VariableElement
+              {...props}
+              value={variableValues?.[props.element.name]}
+            />
+          );
         case 'video':
           return <VideoElement {...props} />;
         case 'table':
@@ -410,7 +420,7 @@ export function RichTextEditor({
           return <DefaultElement {...props} />;
       }
     },
-    [userRenderElement]
+    [userRenderElement, variableValues]
   );
 
   // ---- Leaf renderer ----
@@ -429,7 +439,6 @@ export function RichTextEditor({
   // ---- Change handler ----
   const handleChange = useCallback(
     (newValue: Descendant[]) => {
-      isInternalChangeRef.current = true;
       internalValue.current = newValue;
       onChange?.(newValue);
 
@@ -454,10 +463,6 @@ export function RichTextEditor({
   /** Sync controlled `value` from parent when it changes externally */
   useEffect(() => {
     if (value === undefined) return;
-    if (isInternalChangeRef.current) {
-      isInternalChangeRef.current = false;
-      return;
-    }
     const external = JSON.stringify(value);
     const current = JSON.stringify(editor.children);
     if (external !== current) {
@@ -596,7 +601,7 @@ export function RichTextEditor({
     [editor, userOnKeyDown, ctxMenuOpen]
   );
 
-  /** Focus and show caret when clicking anywhere in an empty editor */
+  /** Focus and show the caret when clicking editable padding or an empty editor. */
   const handleEditableMouseDown = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (readOnly) return;
@@ -607,10 +612,109 @@ export function RichTextEditor({
       const clickedInside = editable.contains(target);
       if (!clickedInside) return;
 
-      if (isDocumentEmpty(editor) || target === editable) {
-        event.preventDefault();
+      const focusAtWithoutScrolling = (location: Location) => {
+        const scrollPositions: Array<{
+          element: HTMLElement;
+          top: number;
+          left: number;
+        }> = [];
+        for (let element: HTMLElement | null = editable; element; element = element.parentElement) {
+          scrollPositions.push({
+            element,
+            top: element.scrollTop,
+            left: element.scrollLeft,
+          });
+        }
+
+        const restoreScrollPositions = () => {
+          for (const position of scrollPositions) {
+            position.element.scrollTop = position.top;
+            position.element.scrollLeft = position.left;
+          }
+        };
+
+        Transforms.select(editor, location);
         ReactEditor.focus(editor);
-        Transforms.select(editor, Editor.start(editor, [0]));
+        restoreScrollPositions();
+        const view = editable.ownerDocument.defaultView;
+        view?.requestAnimationFrame(() => {
+          restoreScrollPositions();
+          // Slate may defer focus until its selection operation is committed.
+          // Restore once more after that follow-up focus has had a frame.
+          view.requestAnimationFrame(restoreScrollPositions);
+        });
+      };
+
+      if (isDocumentEmpty(editor)) {
+        event.preventDefault();
+        focusAtWithoutScrolling(Editor.start(editor, [0]));
+        return;
+      }
+
+      if (target.closest('[data-slate-string], [data-slate-zero-width]')) return;
+      if (target !== editable && !target.closest('[data-slate-node="element"]')) return;
+
+      const lastBlock = editable.lastElementChild as HTMLElement | null;
+      if (lastBlock && event.clientY >= lastBlock.getBoundingClientRect().bottom) {
+        event.preventDefault();
+        focusAtWithoutScrolling(Editor.end(editor, []));
+        return;
+      }
+
+      // Clicking beside a block targets its element or the editable rather
+      // than a text leaf. Resolve from the nearest rendered text line so the
+      // browser cannot reuse a stale selection at the end of the document.
+      try {
+        let nearestTextLine: { element: HTMLElement; rect: DOMRect; score: number } | null = null;
+        const textElements = editable.querySelectorAll<HTMLElement>(
+          '[data-slate-string], [data-slate-zero-width]'
+        );
+        for (const element of textElements) {
+          if (element.closest('[contenteditable="false"]')) continue;
+          for (const rect of Array.from(element.getClientRects())) {
+            if (rect.width === 0 || rect.height === 0) continue;
+            const verticalDistance =
+              event.clientY < rect.top
+                ? rect.top - event.clientY
+                : event.clientY > rect.bottom
+                  ? event.clientY - rect.bottom
+                  : 0;
+            const horizontalDistance =
+              event.clientX < rect.left
+                ? rect.left - event.clientX
+                : event.clientX > rect.right
+                  ? event.clientX - rect.right
+                  : 0;
+            const score = verticalDistance * 100_000 + horizontalDistance;
+            if (!nearestTextLine || score < nearestTextLine.score) {
+              nearestTextLine = { element, rect, score };
+            }
+          }
+        }
+
+        const editableRect = editable.getBoundingClientRect();
+        const view = editable.ownerDocument.defaultView;
+        const computedStyle = view?.getComputedStyle(editable);
+        const fallbackLeft = editableRect.left + (parseFloat(computedStyle?.paddingLeft ?? '0') || 0) + 1;
+        const fallbackRight = editableRect.right - (parseFloat(computedStyle?.paddingRight ?? '0') || 0) - 1;
+        const rangeTarget = nearestTextLine?.element ?? editable;
+        const rangeRect = nearestTextLine?.rect;
+        const caretX = rangeRect
+          ? Math.min(Math.max(event.clientX, rangeRect.left + 1), rangeRect.right - 1)
+          : Math.min(Math.max(event.clientX, fallbackLeft), fallbackRight);
+        const caretY = rangeRect
+          ? Math.min(Math.max(event.clientY, rangeRect.top + 1), rangeRect.bottom - 1)
+          : event.clientY;
+        const clickedRange = ReactEditor.findEventRange(editor, {
+          target: rangeTarget,
+          clientX: caretX,
+          clientY: caretY,
+        });
+        event.preventDefault();
+        focusAtWithoutScrolling(clickedRange);
+        return;
+      } catch {
+        // Some DOM environments cannot derive a caret from pointer coordinates.
       }
     },
     [editor, readOnly]
@@ -674,6 +778,7 @@ export function RichTextEditor({
             <SlashMenu
               open={ctxMenuOpen}
               search={ctxMenuSearch}
+              onSearchChange={setCtxMenuSearch}
               anchorPos={ctxMenuAnchor}
               inTable={ctxMenuInTable}
               customCommands={typeof slashConfig === 'object' ? slashConfig.customCommands : undefined}

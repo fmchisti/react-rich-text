@@ -1,4 +1,4 @@
-import { Editor, Transforms, Range, Point, Element as SlateElement } from 'slate';
+import { Editor, Transforms, Range, Element as SlateElement } from 'slate';
 
 /**
  * Plugin that enables inline variable elements.
@@ -51,12 +51,7 @@ export function withVariables(editor: Editor): Editor {
 
           if (match) {
             const varName = match[1];
-            const matchLength = match[0].length + 1; // +1 for the closing }
-
-            // Calculate start point of the match
-            const startOffset = anchor.offset - (matchLength - 2); // -2 because we haven't inserted `}` yet
-            // We need to go back from the anchor by (beforeText match length)
-            const textBeforeMatch = beforeText.slice(0, -(matchLength - 1));
+            const matchLength = match[0].length;
 
             // Find the position of `{{` in the current text node
             const matchStart = fullText.lastIndexOf('{{' + varName + '}');

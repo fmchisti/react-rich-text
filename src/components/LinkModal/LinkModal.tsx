@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { ModalAnchorPos } from '../InputModal';
+import { normalizeLinkUrl } from '../../core/utils/url';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -94,8 +95,9 @@ export function LinkModal({ open, hasSelection = false, anchorPos, onSubmit, onC
   }, [open, onCancel]);
 
   const handleSubmit = useCallback(() => {
-    if (url.trim()) {
-      onSubmit(url.trim(), text.trim());
+    const normalizedUrl = normalizeLinkUrl(url);
+    if (normalizedUrl) {
+      onSubmit(normalizedUrl, text.trim());
     }
   }, [url, text, onSubmit]);
 
@@ -198,7 +200,7 @@ export function LinkModal({ open, hasSelection = false, anchorPos, onSubmit, onC
             type="button"
             className="rte-modal-btn rte-modal-btn--submit"
             onClick={handleSubmit}
-            disabled={!url.trim()}
+            disabled={!normalizeLinkUrl(url)}
           >
             Insert Link
           </button>

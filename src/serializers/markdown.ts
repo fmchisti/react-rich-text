@@ -9,16 +9,18 @@ import type {
   VariableElement,
   VideoElement,
 } from '../core/types';
+import { normalizeLinkUrl } from '../core/utils/url';
 
 // ---------------------------------------------------------------------------
 // Serialize: Slate JSON -> Markdown
 // ---------------------------------------------------------------------------
 
 function serializeText(node: FormattedText): string {
-  let text = node.text;
-  if (!text) return '';
+  if (!node.text) return '';
+  let text = node.code
+    ? wrapInlineCode(node.text)
+    : escapeMarkdownText(node.text);
 
-  if (node.code) text = `\`${text}\``;
   if (node.bold) text = `**${text}**`;
   if (node.italic) text = `*${text}*`;
   if (node.strikethrough) text = `~~${text}~~`;
@@ -39,7 +41,7 @@ function serializeNode(node: Descendant, listDepth = 0): string {
 
   switch (element.type) {
     case 'paragraph':
-      return `${children}\n\n`;
+      return `${escapeMarkdownBlockStart(children)}\n\n`;
 
     case 'heading': {
       const el = element as HeadingElement;
@@ -49,13 +51,20 @@ function serializeNode(node: Descendant, listDepth = 0): string {
 
     case 'blockquote':
       return children
+        .trimEnd()
         .split('\n')
         .map((line) => `> ${line}`)
         .join('\n') + '\n\n';
 
     case 'code-block': {
       const el = element as CodeBlockElement;
-      return `\`\`\`${el.language ?? ''}\n${children}\n\`\`\`\n\n`;
+      const language = /^[a-zA-Z0-9_+-]+$/.test(el.language ?? '') ? el.language : '';
+      const rawCode = element.children
+        .map((child) => Text.isText(child) ? child.text : serializeNode(child, listDepth))
+        .join('');
+      const longestFence = Math.max(2, ...Array.from(rawCode.matchAll(/`+/g), (match) => match[0].length));
+      const fence = '`'.repeat(longestFence + 1);
+      return `${fence}${language}\n${rawCode}\n${fence}\n\n`;
     }
 
     case 'bulleted-list':
@@ -81,12 +90,13 @@ function serializeNode(node: Descendant, listDepth = 0): string {
 
     case 'link': {
       const el = element as LinkElement;
-      return `[${children}](${el.url})`;
+      const safeUrl = normalizeLinkUrl(el.url);
+      return safeUrl ? `[${children}](${escapeMarkdownDestination(safeUrl)})` : children;
     }
 
     case 'image': {
       const el = element as ImageElement;
-      return `![${el.alt ?? ''}](${el.url})\n\n`;
+      return `![${escapeMarkdownText(el.alt ?? '')}](${escapeMarkdownDestination(el.url)})\n\n`;
     }
 
     case 'variable': {
@@ -96,8 +106,9 @@ function serializeNode(node: Descendant, listDepth = 0): string {
 
     case 'video': {
       const el = element as VideoElement;
-      const caption = el.caption ? ` "${el.caption}"` : '';
-      return `[![Video](${el.embedUrl})](${el.url}${caption})\n\n`;
+      const label = escapeMarkdownText(el.caption?.trim() || 'Video');
+      const safeUrl = normalizeLinkUrl(el.url);
+      return safeUrl ? `[${label}](${escapeMarkdownDestination(safeUrl)})\n\n` : `${label}\n\n`;
     }
 
     default:
@@ -141,15 +152,17 @@ function deserialize(markdown: string): Descendant[] {
     }
 
     // Code block
-    if (line.startsWith('```')) {
-      const language = line.slice(3).trim() || undefined;
+    const fenceMatch = line.match(/^(`{3,})([a-zA-Z0-9_+-]*)\s*$/);
+    if (fenceMatch) {
+      const fence = fenceMatch[1];
+      const language = fenceMatch[2] || undefined;
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].startsWith('```')) {
+      while (i < lines.length && lines[i].trim() !== fence) {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      if (i < lines.length) i++; // skip closing fence
       result.push({
         type: 'code-block',
         language,
@@ -213,13 +226,13 @@ function deserialize(markdown: string): Descendant[] {
       continue;
     }
 
-    // Image (standalone line)
-    const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-    if (imgMatch) {
+    // Image (standalone line), including escaped brackets in alt text.
+    const image = parseStandaloneImage(line);
+    if (image) {
       result.push({
         type: 'image',
-        alt: imgMatch[1],
-        url: imgMatch[2],
+        alt: image.alt,
+        url: image.url,
         children: [{ text: '' as const }],
       } as any);
       i++;
@@ -244,48 +257,161 @@ function deserialize(markdown: string): Descendant[] {
  * Handles: **bold**, *italic*, ~~strikethrough~~, `code`, [links](url)
  */
 function parseInline(text: string): Descendant[] {
-  const nodes: Descendant[] = [];
-  // Regex matches: bold, italic, strikethrough, code, links
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|~~(.+?)~~|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    // Plain text before match
-    if (match.index > lastIndex) {
-      nodes.push({ text: text.slice(lastIndex, match.index) });
-    }
-
-    if (match[2]) {
-      // Bold: **text**
-      nodes.push({ text: match[2], bold: true });
-    } else if (match[3]) {
-      // Italic: *text*
-      nodes.push({ text: match[3], italic: true });
-    } else if (match[4]) {
-      // Strikethrough: ~~text~~
-      nodes.push({ text: match[4], strikethrough: true });
-    } else if (match[5]) {
-      // Code: `text`
-      nodes.push({ text: match[5], code: true });
-    } else if (match[6] && match[7]) {
-      // Link: [text](url)
-      nodes.push({
-        type: 'link',
-        url: match[7],
-        children: [{ text: match[6] }],
-      } as any);
-    }
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Remaining plain text
-  if (lastIndex < text.length) {
-    nodes.push({ text: text.slice(lastIndex) });
-  }
-
+  const nodes = parseInlineSegment(text);
   return nodes.length > 0 ? nodes : [{ text: '' }];
+}
+
+function parseInlineSegment(source: string): Descendant[] {
+  const nodes: Descendant[] = [];
+  let buffer = '';
+  let index = 0;
+
+  const flushText = () => {
+    if (!buffer) return;
+    nodes.push({ text: buffer });
+    buffer = '';
+  };
+
+  while (index < source.length) {
+    if (source[index] === '\\' && index + 1 < source.length && isMarkdownEscapable(source[index + 1])) {
+      buffer += source[index + 1];
+      index += 2;
+      continue;
+    }
+
+    if (source[index] === '`') {
+      const fenceLength = countRun(source, index, '`');
+      const fence = '`'.repeat(fenceLength);
+      const closingIndex = findUnescapedToken(source, fence, index + fenceLength);
+      if (closingIndex >= 0) {
+        flushText();
+        nodes.push({
+          text: source.slice(index + fenceLength, closingIndex),
+          code: true,
+        });
+        index = closingIndex + fenceLength;
+        continue;
+      }
+    }
+
+    if (source[index] === '[') {
+      const labelEnd = findUnescapedToken(source, ']', index + 1);
+      if (labelEnd >= 0 && source[labelEnd + 1] === '(') {
+        const destinationEnd = findUnescapedToken(source, ')', labelEnd + 2);
+        if (destinationEnd >= 0) {
+          flushText();
+          const labelNodes = parseInlineSegment(source.slice(index + 1, labelEnd));
+          const url = normalizeLinkUrl(unescapeMarkdown(source.slice(labelEnd + 2, destinationEnd)));
+          if (url) {
+            nodes.push({ type: 'link', url, children: labelNodes } as any);
+          } else {
+            nodes.push(...labelNodes);
+          }
+          index = destinationEnd + 1;
+          continue;
+        }
+      }
+    }
+
+    const mark = getOpeningMark(source, index);
+    if (mark) {
+      const closingIndex = findUnescapedToken(source, mark.delimiter, index + mark.delimiter.length);
+      if (closingIndex > index + mark.delimiter.length) {
+        flushText();
+        const markedNodes = parseInlineSegment(
+          source.slice(index + mark.delimiter.length, closingIndex)
+        );
+        nodes.push(...applyInlineMarks(markedNodes, mark.marks));
+        index = closingIndex + mark.delimiter.length;
+        continue;
+      }
+    }
+
+    buffer += source[index];
+    index++;
+  }
+
+  flushText();
+  return nodes;
+}
+
+function escapeMarkdownText(text: string): string {
+  return text.replace(/([\\`*_[\]{}<>!|~])/g, '\\$1');
+}
+
+function escapeMarkdownBlockStart(text: string): string {
+  return text.replace(/^(\s*)(#{1,6} |> |[-+] |\d+\. )/, (_match, whitespace: string, marker: string) => {
+    return `${whitespace}\\${marker}`;
+  });
+}
+
+function escapeMarkdownDestination(url: string): string {
+  return encodeURI(url).replace(/\(/g, '%28').replace(/\)/g, '%29');
+}
+
+function wrapInlineCode(text: string): string {
+  const longestFence = Math.max(0, ...Array.from(text.matchAll(/`+/g), (match) => match[0].length));
+  const fence = '`'.repeat(longestFence + 1);
+  return `${fence}${text}${fence}`;
+}
+
+function parseStandaloneImage(line: string): { alt: string; url: string } | null {
+  if (!line.startsWith('![')) return null;
+  const altEnd = findUnescapedToken(line, ']', 2);
+  if (altEnd < 0 || line[altEnd + 1] !== '(') return null;
+  const destinationEnd = findUnescapedToken(line, ')', altEnd + 2);
+  if (destinationEnd !== line.length - 1) return null;
+  return {
+    alt: unescapeMarkdown(line.slice(2, altEnd)),
+    url: unescapeMarkdown(line.slice(altEnd + 2, destinationEnd)),
+  };
+}
+
+function getOpeningMark(
+  source: string,
+  index: number
+): { delimiter: string; marks: Partial<FormattedText> } | null {
+  if (source.startsWith('~~', index)) return { delimiter: '~~', marks: { strikethrough: true } };
+  if (source.startsWith('***', index)) return { delimiter: '***', marks: { bold: true, italic: true } };
+  if (source.startsWith('**', index)) return { delimiter: '**', marks: { bold: true } };
+  if (source[index] === '*') return { delimiter: '*', marks: { italic: true } };
+  return null;
+}
+
+function applyInlineMarks(nodes: Descendant[], marks: Partial<FormattedText>): Descendant[] {
+  return nodes.map((node) => {
+    if (Text.isText(node)) return { ...node, ...marks };
+    return { ...node, children: applyInlineMarks(node.children, marks) } as Descendant;
+  });
+}
+
+function findUnescapedToken(source: string, token: string, fromIndex: number): number {
+  let index = source.indexOf(token, fromIndex);
+  while (index >= 0) {
+    if (!isEscapedAt(source, index)) return index;
+    index = source.indexOf(token, index + token.length);
+  }
+  return -1;
+}
+
+function isEscapedAt(source: string, index: number): boolean {
+  let slashCount = 0;
+  for (let cursor = index - 1; cursor >= 0 && source[cursor] === '\\'; cursor--) slashCount++;
+  return slashCount % 2 === 1;
+}
+
+function countRun(source: string, index: number, character: string): number {
+  let length = 0;
+  while (source[index + length] === character) length++;
+  return length;
+}
+
+function isMarkdownEscapable(character: string): boolean {
+  return /[\\`*_[\]{}()#+\-.!<>|~]/.test(character);
+}
+
+function unescapeMarkdown(value: string): string {
+  return value.replace(/\\([\\`*_[\]{}()#+\-.!<>|~])/g, '$1');
 }
 
 // ---------------------------------------------------------------------------

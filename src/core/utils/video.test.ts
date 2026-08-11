@@ -51,6 +51,12 @@ describe('parseVideoUrl', () => {
     expect(result!.embedUrl).toBe('https://www.dailymotion.com/embed/video/x5e9eog');
   });
 
+  it('parses Dailymotion URLs with a title slug', () => {
+    const result = parseVideoUrl('https://www.dailymotion.com/video/x5e9eog_title');
+    expect(result).not.toBeNull();
+    expect(result!.embedUrl).toBe('https://www.dailymotion.com/embed/video/x5e9eog');
+  });
+
   it('parses dai.ly short URL', () => {
     const result = parseVideoUrl('https://dai.ly/x5e9eog');
     expect(result).not.toBeNull();
@@ -104,5 +110,13 @@ describe('parseVideoUrl', () => {
 
   it('returns null for image URL', () => {
     expect(parseVideoUrl('https://example.com/photo.jpg')).toBeNull();
+  });
+
+  it('rejects provider names embedded in an attacker URL', () => {
+    expect(parseVideoUrl('https://attacker.example/youtube.com/watch?v=dQw4w9WgXcQ')).toBeNull();
+  });
+
+  it('rejects non-HTTP direct video schemes', () => {
+    expect(parseVideoUrl('javascript:alert(1).mp4')).toBeNull();
   });
 });

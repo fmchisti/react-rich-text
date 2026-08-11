@@ -171,6 +171,61 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
+const SAFE_ICON_ELEMENTS = new Set(['path', 'rect', 'circle', 'line', 'polyline', 'polygon']);
+const SAFE_ICON_ATTRIBUTES = new Set([
+  'd', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'rx', 'ry',
+  'cx', 'cy', 'r', 'points', 'fill', 'stroke', 'stroke-width',
+  'stroke-linecap', 'stroke-linejoin', 'fill-rule', 'clip-rule',
+]);
+
+/** Restrict custom icon markup to inert SVG geometry. */
+export function sanitizeIconPaths(input: string | undefined): string {
+  const source = input?.trim();
+  if (!source) return DEFAULT_CUSTOM_ICON;
+
+  const tagPattern = /<([a-z]+)\b([^<>]*?)\/?>/gi;
+  let cursor = 0;
+  let output = '';
+  let tagMatch: RegExpExecArray | null;
+
+  while ((tagMatch = tagPattern.exec(source)) !== null) {
+    if (source.slice(cursor, tagMatch.index).trim()) return DEFAULT_CUSTOM_ICON;
+    const tag = tagMatch[1].toLowerCase();
+    if (!SAFE_ICON_ELEMENTS.has(tag)) return DEFAULT_CUSTOM_ICON;
+
+    const attributeSource = tagMatch[2];
+    const attributePattern = /([a-z][\w-]*)\s*=\s*"([^"<>]*)"/gi;
+    let attributeCursor = 0;
+    let attributes = '';
+    let attributeMatch: RegExpExecArray | null;
+
+    while ((attributeMatch = attributePattern.exec(attributeSource)) !== null) {
+      if (attributeSource.slice(attributeCursor, attributeMatch.index).trim()) return DEFAULT_CUSTOM_ICON;
+      const name = attributeMatch[1].toLowerCase();
+      const value = attributeMatch[2];
+      if (!SAFE_ICON_ATTRIBUTES.has(name) || !isSafeIconAttribute(name, value)) {
+        return DEFAULT_CUSTOM_ICON;
+      }
+      attributes += ` ${name}="${value}"`;
+      attributeCursor = attributePattern.lastIndex;
+    }
+
+    if (attributeSource.slice(attributeCursor).trim()) return DEFAULT_CUSTOM_ICON;
+    output += `<${tag}${attributes}/>`;
+    cursor = tagPattern.lastIndex;
+  }
+
+  return output && !source.slice(cursor).trim() ? output : DEFAULT_CUSTOM_ICON;
+}
+
+function isSafeIconAttribute(name: string, value: string): boolean {
+  if (value.includes('&')) return false;
+  if (name === 'fill' || name === 'stroke') {
+    return /^(?:none|currentColor|#[0-9a-f]{3,8}|[a-z]+)$/i.test(value);
+  }
+  return /^[a-z0-9\s.,+\-]*$/i.test(value);
+}
+
 /**
  * Filter commands by search text (fuzzy match on label + keywords).
  */
@@ -218,7 +273,7 @@ export function filterCustomCommands(
       description: c.description ?? '',
       category: (c.category ?? 'custom') as SlashCommand['category'],
       keywords: c.keywords ?? [],
-      iconPaths: c.iconPaths ?? DEFAULT_CUSTOM_ICON,
+      iconPaths: sanitizeIconPaths(c.iconPaths),
       action: c.action,
     }));
 }

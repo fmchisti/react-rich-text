@@ -1,6 +1,6 @@
 {
   "name": "fc-react-rich-editor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "An advanced, open-source, 100% customizable rich text editor for React with full TypeScript support",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -106,7 +106,7 @@
     "type": "git",
     "url": "git+https://github.com/fmchisti/react-rich-text.git"
   },
-  "homepage": "https://github.com/fmchisti/react-rich-text#readme",
+  "homepage": "https://fmchisti.github.io/react-rich-text/",
   "bugs": {
     "url": "https://github.com/fmchisti/react-rich-text/issues"
   },

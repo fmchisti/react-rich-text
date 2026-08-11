@@ -1,4 +1,5 @@
 import { Editor, Transforms, Range, Element as SlateElement } from 'slate';
+import { normalizeLinkUrl } from '../utils/url';
 
 /**
  * Plugin that provides link insertion / removal helpers.
@@ -12,13 +13,15 @@ export function withLinks(editor: Editor): Editor {
   editor.insertData = (data: DataTransfer) => {
     const text = data.getData('text/plain');
 
-    if (text && isUrl(text)) {
+    const normalizedUrl = text ? normalizeLinkUrl(text) : null;
+
+    if (normalizedUrl) {
       if (editor.selection && !Range.isCollapsed(editor.selection)) {
         // Wrap selected text in a link
-        wrapLink(editor, text);
+        wrapLink(editor, normalizedUrl);
       } else {
         // Insert a link node with the URL as text
-        insertLink(editor, text, text);
+        insertLink(editor, normalizedUrl, text.trim());
       }
     } else {
       insertData(data);
@@ -37,9 +40,10 @@ export function withLinks(editor: Editor): Editor {
         if (wordBefore) {
           const range = Editor.range(editor, wordBefore, start);
           const beforeText = Editor.string(editor, range);
-          if (isUrl(beforeText)) {
+          const normalizedUrl = normalizeLinkUrl(beforeText);
+          if (normalizedUrl) {
             Transforms.select(editor, range);
-            wrapLink(editor, beforeText);
+            wrapLink(editor, normalizedUrl);
             Transforms.collapse(editor, { edge: 'end' });
           }
         }
@@ -68,6 +72,9 @@ export function isLinkActive(editor: Editor): boolean {
  * Wrap the current selection in a link element.
  */
 export function wrapLink(editor: Editor, url: string): void {
+  const normalizedUrl = normalizeLinkUrl(url);
+  if (!normalizedUrl) return;
+
   if (isLinkActive(editor)) {
     unwrapLink(editor);
   }
@@ -77,8 +84,8 @@ export function wrapLink(editor: Editor, url: string): void {
 
   const link = {
     type: 'link' as const,
-    url,
-    children: isCollapsed ? [{ text: url }] : [],
+    url: normalizedUrl,
+    children: isCollapsed ? [{ text: normalizedUrl }] : [],
   };
 
   if (isCollapsed) {
@@ -103,32 +110,17 @@ export function unwrapLink(editor: Editor): void {
  * Insert a new link with specified text and URL.
  */
 export function insertLink(editor: Editor, url: string, text?: string): void {
-  if (editor.selection) {
-    wrapLink(editor, url);
-  } else {
-    Transforms.insertNodes(editor, {
-      type: 'link',
-      url,
-      children: [{ text: text ?? url }],
-    } as any);
-  }
-}
+  const normalizedUrl = normalizeLinkUrl(url);
+  if (!normalizedUrl) return;
 
-/**
- * Simple URL detection.
- */
-function isUrl(text: string): boolean {
-  const trimmed = text.trim();
-  if (!trimmed) return false;
-  try {
-    const url = new URL(trimmed);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    try {
-      const url = new URL(`https://${trimmed}`);
-      return url.hostname.includes('.');
-    } catch {
-      return false;
-    }
+  if (editor.selection && !Range.isCollapsed(editor.selection)) {
+    wrapLink(editor, normalizedUrl);
+    return;
   }
+
+  Transforms.insertNodes(editor, {
+    type: 'link',
+    url: normalizedUrl,
+    children: [{ text: text?.trim() || normalizedUrl }],
+  } as any);
 }
